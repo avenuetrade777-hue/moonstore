@@ -1,0 +1,2087 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Xitoy Bozor — Online Do'kon</title>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Tailwind CSS with Dark Mode class support -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        @media (min-width: 520px) {
+            body {
+                padding: 16px 0;
+            }
+            #app-shell {
+                max-width: 440px;
+                margin: 0 auto;
+                min-height: calc(100vh - 32px);
+                border-radius: 32px;
+                box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
+                border: 6px solid #1e293b;
+                overflow: hidden;
+                position: relative;
+            }
+        }
+        @media (max-width: 519px) {
+            #app-shell {
+                width: 100%;
+                min-height: 100vh;
+            }
+        }
+        .slide-up {
+            animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0.4; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .fade-in {
+            animation: fadeIn 0.22s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased select-none transition-colors duration-200">
+
+<div id="app-shell" class="bg-slate-50 dark:bg-slate-900 flex flex-col justify-between relative transition-colors duration-200">
+
+    <!-- ===================================================================== -->
+    <!-- SCREEN 0: AUTHENTICATION GATE (CUSTOMER REGISTER & SELLER LOGIN)      -->
+    <!-- ===================================================================== -->
+    <div id="auth-screen" class="hidden flex-1 flex flex-col justify-between p-5 bg-gradient-to-b from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 fade-in">
+        
+        <!-- Top Brand Header & Quick Language Switch -->
+        <div>
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-2">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-600 to-orange-500 flex items-center justify-center text-white font-extrabold text-lg shadow-md">
+                        XB
+                    </div>
+                    <div>
+                        <span class="font-extrabold text-base tracking-tight block leading-none">Xitoy Bozor</span>
+                        <span class="text-[11px] text-slate-500 dark:text-slate-400">China Direct Store</span>
+                    </div>
+                </div>
+
+                <!-- Language Switch Pills on Auth Screen -->
+                <div class="flex items-center gap-1 bg-slate-200/80 dark:bg-slate-800 p-1 rounded-xl text-[11px] font-bold">
+                    <button onclick="setLanguage('uz')" class="lang-pill-uz px-2 py-1 rounded-lg transition">UZ</button>
+                    <button onclick="setLanguage('ru')" class="lang-pill-ru px-2 py-1 rounded-lg transition">RU</button>
+                    <button onclick="setLanguage('en')" class="lang-pill-en px-2 py-1 rounded-lg transition">EN</button>
+                </div>
+            </div>
+
+            <!-- CUSTOMER REGISTRATION CARD -->
+            <div id="customer-register-box" class="bg-white dark:bg-slate-800/90 rounded-3xl p-5 shadow-xl shadow-slate-200/60 dark:shadow-none border border-slate-100 dark:border-slate-700/70">
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 text-[11px] font-bold mb-3">
+                    <span>🛍️</span>
+                    <span data-i18n="welcome_badge">Xush kelibsiz!</span>
+                </div>
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white leading-snug" data-i18n="reg_title">Do'konga kirish uchun ro'yxatdan o'ting</h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1" data-i18n="reg_subtitle">SMS kod talab qilinmaydi — ma'lumotlaringizni kiriting va Xitoydan arzon narxlarda xarid qiling.</p>
+
+                <form onsubmit="handleCustomerRegister(event)" class="mt-4 space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="label_fname">Ismingiz *</label>
+                        <input id="reg-fname" required type="text" placeholder="Masalan: Dilnoza" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-rose-500 dark:text-white">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="label_lname">Familiyangiz *</label>
+                        <input id="reg-lname" required type="text" placeholder="Masalan: Usmonova" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-rose-500 dark:text-white">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="label_phone">Telefon raqamingiz *</label>
+                        <input id="reg-phone" required type="tel" placeholder="+998 90 123 45 67" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-rose-500 dark:text-white">
+                    </div>
+
+                    <button type="submit" class="w-full mt-2 py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-orange-500 hover:from-rose-700 hover:to-orange-600 text-white font-bold text-sm shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2 active:scale-[0.98] transition">
+                        <span data-i18n="btn_enter_store">Do'konga kirish</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- SELLER LOGIN CARD (Hidden until "Sotuvchi uchun kirish" clicked) -->
+            <div id="seller-login-box" class="hidden bg-white dark:bg-slate-800 rounded-3xl p-5 shadow-xl border border-slate-200 dark:border-slate-700 fade-in">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900 dark:bg-slate-700 text-white text-[11px] font-bold">
+                        <i data-lucide="lock" class="w-3 h-3 text-amber-400"></i>
+                        <span data-i18n="seller_panel_badge">Sotuvchi boshqaruvi</span>
+                    </span>
+                    <button type="button" onclick="toggleAuthMode('customer')" class="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline" data-i18n="back_to_customer">
+                        ← Xaridor kirishi
+                    </button>
+                </div>
+
+                <h2 class="text-lg font-extrabold text-slate-900 dark:text-white" data-i18n="seller_login_title">Sotuvchi sifatida kirish</h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5" data-i18n="seller_login_sub">Mahsulot qo'shish va foyda hisobotini ko'rish uchun login va parolni kiriting.</p>
+
+                <form onsubmit="handleSellerLogin(event)" class="mt-4 space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Login *</label>
+                        <input id="seller-login-input" required type="text" placeholder="admin" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-slate-900 dark:focus:border-amber-400 dark:text-white">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1" data-i18n="label_password">Parol *</label>
+                        <input id="seller-pass-input" required type="password" placeholder="•••••" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-slate-900 dark:focus:border-amber-400 dark:text-white">
+                    </div>
+
+                    <div class="bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 rounded-xl px-3 py-2 text-[11px] text-amber-800 dark:text-amber-300">
+                        💡 Test kirish: Login: <b>admin</b> | Parol: <b>12345</b> (Sozlamalarda o'zgartirish mumkin)
+                    </div>
+
+                    <button type="submit" class="w-full py-3.5 rounded-2xl bg-slate-900 dark:bg-amber-500 hover:bg-slate-800 dark:hover:bg-amber-600 text-white dark:text-slate-950 font-bold text-sm shadow-md flex items-center justify-center gap-2 active:scale-[0.98] transition">
+                        <i data-lucide="shield-check" class="w-4 h-4"></i>
+                        <span data-i18n="btn_seller_login">Boshqaruv paneliga kirish</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Subtle Small Link at Bottom for Seller Login -->
+        <div class="pt-6 pb-2 text-center">
+            <button id="subtle-seller-trigger" onclick="toggleAuthMode('seller')" class="text-[11px] font-medium text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 underline decoration-dotted underline-offset-4 transition" data-i18n="seller_entry_link">
+                Sotuvchi uchun kirish
+            </button>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MAIN APP CONTAINER (SHOWN AFTER LOGIN)                                -->
+    <!-- ===================================================================== -->
+    <div id="main-app-wrapper" class="hidden flex-1 flex flex-col justify-between">
+
+        <!-- STICKY TOP HEADER -->
+        <header class="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 px-4 pt-3 pb-2.5">
+            <div class="flex items-center justify-between mb-2.5">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-600 to-orange-500 flex items-center justify-center text-white font-extrabold text-base shadow-sm">
+                        XB
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <h1 class="font-extrabold text-base tracking-tight leading-none">Xitoy Bozor</h1>
+                            <span id="header-role-badge" class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">Xaridor</span>
+                        </div>
+                        <p id="header-user-greeting" class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-[200px]">
+                            Xitoydan to'g'ridan-to'g'ri
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Right Quick Actions: Theme Toggle + Direct Seller Contact -->
+                <div class="flex items-center gap-1.5">
+                    <button onclick="toggleTheme()" title="Tema" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-amber-300 hover:opacity-80 transition">
+                        <i id="theme-header-icon" data-lucide="moon" class="w-4 h-4"></i>
+                    </button>
+                    <a id="header-seller-tg-link" href="https://t.me/xitoy_bozor_admin" target="_blank" title="Sotuvchi bilan bog'lanish" class="p-2 rounded-xl bg-sky-50 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400 hover:opacity-80 transition">
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- LIVE SEARCH INPUT -->
+            <div class="relative">
+                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                <input 
+                    id="search-input"
+                    type="text" 
+                    oninput="handleSearch(this.value)"
+                    data-i18n-placeholder="search_placeholder"
+                    placeholder="Mahsulot qidirish (telefon, soat, krossovka)..." 
+                    class="w-full bg-slate-100 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 text-sm rounded-2xl pl-10 pr-9 py-2.5 outline-none border border-transparent focus:border-rose-500 transition placeholder:text-slate-400 dark:text-white"
+                >
+                <button id="clear-search-btn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x-circle" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN SCROLLABLE VIEWS -->
+        <main id="main-content" class="flex-1 pb-24 overflow-y-auto">
+            
+            <!-- ========================================================= -->
+            <!-- VIEW 1: CATALOG (DO'KON — VISIBLE TO CUSTOMER & SELLER)   -->
+            <!-- ========================================================= -->
+            <div id="view-catalog" class="fade-in">
+                <!-- Promo Banner -->
+                <div id="hero-section" class="px-4 pt-3">
+                    <div class="rounded-2xl bg-gradient-to-r from-rose-600 via-red-500 to-orange-500 p-4 text-white shadow-md relative overflow-hidden">
+                        <div class="relative z-10 max-w-[76%]">
+                            <span class="inline-block text-[10px] font-bold uppercase tracking-wider bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-full mb-1.5" data-i18n="banner_tag">🔥 Xitoydan birinchi qo'l</span>
+                            <h2 class="font-extrabold text-base leading-tight" data-i18n="banner_title">Bozordan 2 barobar arzon narxlar!</h2>
+                            <p class="text-xs text-white/90 mt-1" data-i18n="banner_sub">12–18 kun ichida O'zbekiston bo'ylab yetkazib beramiz</p>
+                        </div>
+                        <div class="absolute -right-2 -bottom-3 text-6xl opacity-25 select-none">📦</div>
+                    </div>
+                </div>
+
+                <!-- Horizontal Category Chips -->
+                <div class="sticky top-0 z-20 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm py-3 px-4">
+                    <div id="category-list" class="flex gap-2 overflow-x-auto no-scrollbar"></div>
+                </div>
+
+                <!-- Section Title & Count -->
+                <div class="px-4 mb-2.5 flex items-center justify-between">
+                    <h3 id="catalog-heading" class="font-bold text-sm text-slate-800 dark:text-slate-200" data-i18n="all_products">Barcha mahsulotlar</h3>
+                    <span id="product-count" class="text-xs font-medium text-slate-500 dark:text-slate-400">0 ta</span>
+                </div>
+
+                <!-- 2-Column Product Grid -->
+                <div id="products-grid" class="px-4 grid grid-cols-2 gap-3"></div>
+
+                <!-- Empty Search State -->
+                <div id="empty-state" class="hidden px-6 py-12 text-center">
+                    <div class="w-16 h-16 rounded-full bg-slate-200/70 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3 text-3xl">🔍</div>
+                    <h4 class="font-bold text-slate-800 dark:text-slate-200 text-base" data-i18n="not_found_title">Hech narsa topilmadi</h4>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto" data-i18n="not_found_sub">Boshqa so'z bilan qidirib ko'ring.</p>
+                    <button onclick="clearSearch()" class="mt-4 px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-semibold shadow-sm" data-i18n="show_all_btn">Barcha tovarlarni ko'rish</button>
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- VIEW 2: CART (SAVATCHA)                                   -->
+            <!-- ========================================================= -->
+            <div id="view-cart" class="hidden fade-in px-4 pt-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="font-extrabold text-lg" data-i18n="cart_title">Savatchangiz</h2>
+                    <button onclick="clearCart()" id="clear-cart-btn" class="text-xs text-rose-600 font-semibold hidden" data-i18n="clear_btn">Tozalash</button>
+                </div>
+
+                <div id="cart-items-container" class="space-y-3"></div>
+
+                <!-- Empty Cart State -->
+                <div id="empty-cart" class="py-14 text-center">
+                    <div class="w-20 h-20 rounded-full bg-orange-100 dark:bg-orange-500/15 text-orange-500 flex items-center justify-center mx-auto mb-3 text-4xl">🛒</div>
+                    <h3 class="font-bold text-base" data-i18n="cart_empty_title">Savatcha hozircha bo'sh</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto" data-i18n="cart_empty_sub">Xitoydan arzon narxdagi tovarlarni tanlang va buyurtma bering!</p>
+                    <button onclick="switchTab('catalog')" class="mt-4 px-5 py-2.5 rounded-xl bg-rose-600 text-white text-xs font-bold shadow-sm" data-i18n="back_to_shop">Do'konga qaytish</button>
+                </div>
+
+                <!-- Checkout Summary (ism va telefon profildan olinadi) -->
+                <div id="checkout-form-box" class="hidden mt-5 bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-700">
+                    <div class="space-y-1.5 text-xs">
+                        <div class="flex justify-between text-slate-500 dark:text-slate-400">
+                            <span data-i18n="items_count_label">Tovarlar soni:</span>
+                            <span id="summary-count" class="font-semibold text-slate-800 dark:text-slate-200">0 ta</span>
+                        </div>
+                        <div class="flex justify-between text-base font-extrabold pt-1">
+                            <span data-i18n="total_sum_label">Jami summa:</span>
+                            <span id="summary-total" class="text-rose-600">0 so'm</span>
+                        </div>
+                    </div>
+
+                    <button onclick="openPaymentModal()" class="mt-4 w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-orange-500 hover:from-rose-700 hover:to-orange-600 text-white font-bold text-sm shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2 active:scale-[0.98] transition">
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                        <span data-i18n="place_order_btn">Buyurtma berish</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- VIEW 3: SELLER ONLY — ADD PRODUCT ("QO'SHISH +")          -->
+            <!-- ========================================================= -->
+            <div id="view-admin" class="hidden fade-in px-4 pt-4">
+                <div class="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl p-4 text-white mb-4 shadow-sm">
+                    <span class="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full">Sotuvchi paneli</span>
+                    <h2 class="font-extrabold text-base mt-1" data-i18n="add_product_title">Yangi mahsulot qo'shish</h2>
+                    <p class="text-xs text-slate-300 mt-0.5">Kiritilgan tovar darhol barcha xaridorlarga ko'rinadi.</p>
+                </div>
+
+                <form id="add-product-form" onsubmit="handleAddProduct(event)" class="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 space-y-3.5">
+                    <div>
+                        <label class="block text-xs font-bold mb-1">Mahsulot nomi *</label>
+                        <input id="new-title" required type="text" placeholder="Masalan: Xiaomi Redmi Buds 5 Pro" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-rose-500">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold mb-1">Xitoy tannarxi (so'm) *</label>
+                            <input id="new-cost" required type="number" placeholder="180000" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-rose-500">
+                            <span class="text-[10px] text-slate-400">Faqat sizga ko'rinadi</span>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold mb-1">Sotuv narxi (so'm) *</label>
+                            <input id="new-price" required type="number" placeholder="280000" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-rose-500">
+                            <span class="text-[10px] text-emerald-500 font-semibold">Xaridor ko'radigan narx</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold mb-1">Yetib kelish vaqti *</label>
+                            <input id="new-delivery" required type="text" value="14-18 kun" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-rose-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold mb-1">Kategoriya *</label>
+                            <select id="new-category" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-500">
+                                <option value="Telefonlar">Telefonlar</option>
+                                <option value="Gadjetlar">Gadjetlar</option>
+                                <option value="Kiyim & Poyabzal">Kiyim & Poyabzal</option>
+                                <option value="Uy-ro'zg'or">Uy-ro'zg'or</option>
+                                <option value="Aksessuarlar">Aksessuarlar</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold mb-1">Rasmlar yuklash (1 tadan 4 tagacha)</label>
+                        <label class="flex flex-col items-center justify-center w-full h-22 border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-rose-500 rounded-xl cursor-pointer bg-slate-50 dark:bg-slate-900 py-3 transition">
+                            <i data-lucide="image-plus" class="w-5 h-5 text-rose-500 mb-1"></i>
+                            <p class="text-xs font-medium">Telefondan rasm tanlang</p>
+                            <input id="new-images-file" type="file" accept="image/*" multiple onchange="previewUploadedImages(event)" class="hidden" />
+                        </label>
+                        <div id="upload-preview-strip" class="flex gap-2 mt-2 overflow-x-auto"></div>
+                        <input id="new-image-url" type="url" placeholder="Yoki rasm havolasini (URL) kiriting..." class="mt-2 w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs outline-none focus:border-rose-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold mb-1">Video havola (ixtiyoriy)</label>
+                        <input id="new-video-url" type="url" placeholder="https://..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs outline-none focus:border-rose-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold mb-1">Qisqacha ma'lumot</label>
+                        <textarea id="new-desc" rows="2" placeholder="Sifati zo'r, Xitoy fabrikasidan..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm outline-none focus:border-rose-500"></textarea>
+                    </div>
+
+                    <button type="submit" class="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 active:scale-[0.98] transition">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        Do'konga joylash
+                    </button>
+                </form>
+
+                <!-- Existing Products List -->
+                <div class="mt-5 mb-4">
+                    <h3 class="font-bold text-xs uppercase tracking-wider text-slate-500 mb-2">Do'kondagi mahsulotlar</h3>
+                    <div id="admin-product-list" class="space-y-2"></div>
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- VIEW 4: SELLER ONLY — SALES & PROFIT ANALYTICS ("HISOBOT")-->
+            <!-- ========================================================= -->
+            <div id="view-analytics" class="hidden fade-in px-4 pt-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h2 class="font-extrabold text-lg">Sotuvlar va Foyda</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Qachon nechta tovar sotilgani va sof daromad</p>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold">
+                        📊 Hisobot
+                    </span>
+                </div>
+
+                <!-- Filter Pills -->
+                <div class="flex gap-2 mb-4 overflow-x-auto no-scrollbar">
+                    <button onclick="setSalesFilter('all')" id="filter-all" class="sales-filter-btn px-3 py-1.5 rounded-full text-xs font-bold bg-slate-900 text-white dark:bg-rose-600">Hammasi</button>
+                    <button onclick="setSalesFilter('today')" id="filter-today" class="sales-filter-btn px-3 py-1.5 rounded-full text-xs font-bold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">Bugun</button>
+                    <button onclick="setSalesFilter('week')" id="filter-week" class="sales-filter-btn px-3 py-1.5 rounded-full text-xs font-bold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">So'nggi 7 kun</button>
+                </div>
+
+                <!-- 3 KPI Summary Cards -->
+                <div class="grid grid-cols-3 gap-2.5 mb-4">
+                    <div class="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-2xs">
+                        <p class="text-[10px] font-semibold text-slate-400">Sotilgan tovar</p>
+                        <p id="kpi-sold-qty" class="text-base font-extrabold text-slate-900 dark:text-white mt-1">0 dona</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-2xs">
+                        <p class="text-[10px] font-semibold text-slate-400">Umumiy tushum</p>
+                        <p id="kpi-revenue" class="text-xs font-extrabold text-sky-600 dark:text-sky-400 mt-1.5 leading-tight">0 so'm</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-emerald-500 to-teal-600 p-3 rounded-2xl text-white shadow-sm">
+                        <p class="text-[10px] font-semibold text-emerald-100">Sof foyda</p>
+                        <p id="kpi-profit" class="text-xs font-extrabold mt-1.5 leading-tight">+0 so'm</p>
+                    </div>
+                </div>
+
+                <!-- Chronological Sales History Log -->
+                <h3 class="font-bold text-xs uppercase tracking-wider text-slate-500 mb-2.5">Sotuvlar tarixi (Sana va foyda)</h3>
+                <div id="sales-history-list" class="space-y-2.5 pb-4">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- VIEW 5: PROFILE & SETTINGS ("PROFIL / SOZLAMALAR")        -->
+            <!-- ========================================================= -->
+            <div id="view-settings" class="hidden fade-in px-4 pt-4 space-y-4">
+                <h2 class="font-extrabold text-lg" data-i18n="settings_title">Profil va Sozlamalar</h2>
+
+                <!-- 1. User Profile Card -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-xs">
+                    <div class="flex items-center gap-3">
+                        <div id="profile-avatar" class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500 to-orange-400 text-white font-extrabold text-lg flex items-center justify-center shrink-0">
+                            JK
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <h3 id="profile-fullname" class="font-extrabold text-base truncate">Foydalanuvchi</h3>
+                                <span id="profile-role-tag" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">Xaridor</span>
+                            </div>
+                            <p id="profile-phone-text" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">+998 -- --- -- --</p>
+                        </div>
+                    </div>
+
+                    <!-- Edit Customer Profile Fields (Visible for Customer) -->
+                    <div id="customer-profile-edit" class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 space-y-2.5">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input id="edit-fname" type="text" placeholder="Ism" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs outline-none">
+                            <input id="edit-lname" type="text" placeholder="Familiya" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs outline-none">
+                        </div>
+                        <div class="flex gap-2">
+                            <input id="edit-phone" type="tel" placeholder="Telefon" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs outline-none">
+                            <button onclick="saveCustomerProfileEdit()" class="px-4 py-2 rounded-xl bg-slate-900 dark:bg-rose-600 text-white font-bold text-xs" data-i18n="save_btn">Saqlash</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Appearance (Day/Night Theme) & Language Switcher -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-xs space-y-4">
+                    <!-- Theme Switch -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-xl bg-amber-100 dark:bg-indigo-500/20 text-amber-600 dark:text-indigo-300 flex items-center justify-center">
+                                <i data-lucide="sun-moon" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold" data-i18n="theme_label">Mavzu (Tema)</p>
+                                <p id="current-theme-desc" class="text-[11px] text-slate-500 dark:text-slate-400">Kunduzgi rejim</p>
+                            </div>
+                        </div>
+                        <div class="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl text-xs font-bold">
+                            <button onclick="setTheme('light')" id="btn-theme-light" class="px-3 py-1.5 rounded-lg transition">☀️ Kunduzgi</button>
+                            <button onclick="setTheme('dark')" id="btn-theme-dark" class="px-3 py-1.5 rounded-lg transition">🌙 Qorong'u</button>
+                        </div>
+                    </div>
+
+                    <!-- Language Switch -->
+                    <div class="pt-3 border-t border-slate-100 dark:border-slate-700">
+                        <div class="flex items-center gap-2.5 mb-2.5">
+                            <div class="w-9 h-9 rounded-xl bg-sky-100 dark:bg-sky-500/20 text-sky-600 dark:text-sky-300 flex items-center justify-center">
+                                <i data-lucide="globe" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold" data-i18n="lang_label">Ilova tili</p>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">O'zbekcha • Русский • English</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="setLanguage('uz')" class="lang-btn-uz py-2 rounded-xl text-xs font-bold border transition">🇺🇿 O'zbekcha</button>
+                            <button onclick="setLanguage('ru')" class="lang-btn-ru py-2 rounded-xl text-xs font-bold border transition">🇷🇺 Русский</button>
+                            <button onclick="setLanguage('en')" class="lang-btn-en py-2 rounded-xl text-xs font-bold border transition">🇬🇧 English</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Direct Contact with Seller (Telegram Lichka) -->
+                <div class="bg-gradient-to-r from-sky-500 to-blue-600 rounded-2xl p-4 text-white shadow-md">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h4 class="font-extrabold text-sm" data-i18n="contact_seller_title">Sotuvchi bilan bog'lanish</h4>
+                            <p class="text-xs text-sky-100 mt-0.5" data-i18n="contact_seller_sub">Savollaringiz bo'lsa to'g'ridan-to'g'ri Telegram lichkaga yozing</p>
+                        </div>
+                        <a id="settings-seller-tg-btn" href="https://t.me/xitoy_bozor_admin" target="_blank" class="shrink-0 px-4 py-2.5 rounded-xl bg-white text-sky-600 font-extrabold text-xs shadow-sm flex items-center gap-1.5 active:scale-95 transition">
+                            <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                            <span data-i18n="write_tg_btn">Telegram</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 4. SELLER ONLY CONFIGURATION (Bot Token, Chat ID, Telegram Username, Password) -->
+                <div id="seller-only-settings" class="hidden bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 space-y-3">
+                    <h4 class="font-extrabold text-xs uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                        <i data-lucide="settings" class="w-4 h-4"></i>
+                        Sotuvchi Telegram & Parol Sozlamalari
+                    </h4>
+                    <div>
+                        <label class="block text-[11px] font-bold mb-1">Shaxsiy Telegram Username (lichkangiz)</label>
+                        <input id="cfg-seller-username" type="text" placeholder="xitoy_bozor_admin" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold mb-1">Bot Token (@BotFather)</label>
+                        <input id="cfg-bot-token" type="text" placeholder="7123456789:AAH..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold mb-1">Sizning Telegram ID (Chat ID)</label>
+                        <input id="cfg-chat-id" type="text" placeholder="987654321" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold mb-1">Sotuvchi kirish paroli</label>
+                        <input id="cfg-seller-pass" type="text" placeholder="12345" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs outline-none">
+                    </div>
+                    <button onclick="saveSellerConfig()" class="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-950 font-bold text-xs">
+                        Sotuvchi sozlamalarini saqlash
+                    </button>
+                </div>
+
+                <!-- 5. Logout / Switch Role Button -->
+                <button onclick="logoutUser()" class="w-full py-3 rounded-2xl bg-rose-50 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center justify-center gap-2 hover:bg-rose-100 transition">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                    <span data-i18n="logout_btn">Akkauntdan chiqish (Rolni almashtirish)</span>
+                </button>
+            </div>
+
+        </main>
+
+        <!-- ================================================================= -->
+        <!-- ROLE-BASED BOTTOM NAVIGATION BAR                                  -->
+        <!-- ================================================================= -->
+        <nav class="sticky bottom-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 px-2 py-2 flex items-center justify-around">
+            <!-- 1. Do'kon (Everyone) -->
+            <button onclick="switchTab('catalog')" id="nav-catalog" class="nav-btn flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-rose-600 font-bold transition">
+                <i data-lucide="store" class="w-5 h-5"></i>
+                <span class="text-[11px]" data-i18n="nav_shop">Do'kon</span>
+            </button>
+
+            <!-- 2. Savatcha (Everyone) -->
+            <button onclick="switchTab('cart')" id="nav-cart" class="nav-btn relative flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-slate-500 dark:text-slate-400 font-medium transition">
+                <div class="relative">
+                    <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+                    <span id="cart-badge" class="hidden absolute -top-1.5 -right-2 bg-rose-600 text-white text-[10px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center">0</span>
+                </div>
+                <span class="text-[11px]" data-i18n="nav_cart">Savatcha</span>
+            </button>
+
+            <!-- 3. Qo'shish (+) (SELLER ONLY — Hidden for Customers!) -->
+            <button onclick="switchTab('admin')" id="nav-admin" class="nav-btn hidden flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-slate-500 dark:text-slate-400 font-medium transition">
+                <div class="w-5 h-5 rounded-md bg-emerald-600 text-white flex items-center justify-center">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                </div>
+                <span class="text-[11px]" data-i18n="nav_add">Qo'shish</span>
+            </button>
+
+            <!-- 4. Hisobot / Foyda (SELLER ONLY — Hidden for Customers!) -->
+            <button onclick="switchTab('analytics')" id="nav-analytics" class="nav-btn hidden flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-slate-500 dark:text-slate-400 font-medium transition">
+                <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                <span class="text-[11px]" data-i18n="nav_report">Hisobot</span>
+            </button>
+
+            <!-- 5. Profil / Sozlamalar (Everyone) -->
+            <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-slate-500 dark:text-slate-400 font-medium transition">
+                <i data-lucide="user-cog" class="w-5 h-5"></i>
+                <span class="text-[11px]" data-i18n="nav_profile">Profil</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- PRODUCT DETAIL MODAL                                                  -->
+    <!-- ===================================================================== -->
+    <div id="product-modal" class="hidden fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-end sm:items-center justify-center">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-[440px] max-h-[92vh] rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col slide-up shadow-2xl">
+            <div class="relative bg-slate-100 dark:bg-slate-800 h-72 shrink-0">
+                <img id="modal-main-img" src="" alt="" class="w-full h-full object-cover">
+                <div id="modal-video-box" class="hidden absolute inset-0 bg-black flex flex-col items-center justify-center text-white p-4 text-center">
+                    <i data-lucide="play-circle" class="w-12 h-12 text-rose-500 mb-2"></i>
+                    <p class="text-xs font-semibold">Mahsulot video obzori</p>
+                    <a id="modal-video-link" href="#" target="_blank" class="mt-2 px-4 py-1.5 rounded-full bg-rose-600 text-xs font-bold">Videoni ochish ↗</a>
+                </div>
+                <button onclick="closeProductModal()" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 text-slate-800 flex items-center justify-center shadow-md">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+                <div class="absolute bottom-3 left-3 bg-slate-900/85 text-white text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                    <span>🚚</span>
+                    <span id="modal-delivery" class="text-amber-300 font-bold">14-18 kun</span>
+                </div>
+                <button id="modal-video-toggle" onclick="toggleModalVideo()" class="hidden absolute bottom-3 right-3 bg-rose-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md flex items-center gap-1">
+                    <i data-lucide="video" class="w-3.5 h-3.5"></i>
+                    <span>Video</span>
+                </button>
+            </div>
+
+            <div id="modal-thumbnails" class="flex gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 overflow-x-auto no-scrollbar shrink-0"></div>
+
+            <div class="p-4 overflow-y-auto flex-1 space-y-3">
+                <span id="modal-category" class="text-[11px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-500/15 px-2.5 py-0.5 rounded-full">Kategoriya</span>
+                <h2 id="modal-title" class="font-extrabold text-lg leading-snug">Mahsulot nomi</h2>
+                <div class="flex items-baseline gap-2.5">
+                    <span id="modal-price" class="text-2xl font-extrabold">0 so'm</span>
+                    <span id="modal-old-price" class="text-xs text-slate-400 line-through"></span>
+                </div>
+                <p id="modal-desc" class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed"></p>
+            </div>
+
+            <div class="p-3.5 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex gap-2.5 shrink-0">
+                <button id="modal-add-cart-btn" class="flex-1 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 font-bold text-xs flex items-center justify-center gap-1.5">
+                    <i data-lucide="shopping-cart" class="w-4 h-4"></i>
+                    <span data-i18n="add_to_cart_short">Savatga</span>
+                </button>
+                <button id="modal-buy-now-btn" class="flex-[1.5] py-3 rounded-2xl bg-gradient-to-r from-rose-600 to-orange-500 text-white font-bold text-xs shadow-lg flex items-center justify-center gap-1.5">
+                    <i data-lucide="zap" class="w-4 h-4"></i>
+                    <span data-i18n="buy_now_btn">Hozir zakaz qilish</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- ORDER CONFIRMATION & TELEGRAM PREVIEW MODAL                           -->
+    <!-- ===================================================================== -->
+    <div id="order-success-modal" class="hidden fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-[400px] rounded-3xl p-5 shadow-2xl slide-up">
+            <div class="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+                <i data-lucide="check-circle-2" class="w-8 h-8"></i>
+            </div>
+            <h3 class="font-extrabold text-center text-lg">Buyurtma qabul qilindi!</h3>
+            <p class="text-xs text-center text-slate-500 dark:text-slate-400 mt-1">Sotuvchiga yuborilgan buyurtma ma'lumoti:</p>
+
+            <div class="mt-4 bg-sky-50 dark:bg-slate-800 border border-sky-200 dark:border-slate-700 rounded-2xl p-3.5 text-xs font-mono whitespace-pre-line leading-relaxed" id="telegram-message-preview"></div>
+
+            <div id="telegram-send-status" class="mt-2.5 text-center text-[11px] font-semibold text-emerald-600">
+                ✅ Sotuvchi hisobotiga ham avtomatik yozildi!
+            </div>
+
+            <div class="mt-4 flex gap-2">
+                <button onclick="copyOrderText()" class="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold text-xs flex items-center justify-center gap-1.5">
+                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                    Nusxa olish
+                </button>
+                <button onclick="closeOrderModal()" class="flex-1 py-2.5 rounded-xl bg-rose-600 text-white font-bold text-xs">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- PAYMENT MODAL (NAQD / KARTA)                                          -->
+    <!-- ===================================================================== -->
+    <div id="payment-modal" class="hidden fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-[400px] max-h-[90vh] overflow-y-auto rounded-3xl p-5 shadow-2xl slide-up">
+
+            <!-- STEP 1: choose method -->
+            <div id="pay-step-choose">
+                <h3 class="font-extrabold text-center text-lg" data-i18n="pay_title">To'lov usulini tanlang</h3>
+                <p class="text-xs text-center text-slate-500 dark:text-slate-400 mt-1">
+                    <span data-i18n="total_sum_label">Jami summa:</span>
+                    <span id="pay-total" class="font-extrabold text-rose-600"></span>
+                </p>
+
+                <div class="mt-4 space-y-2.5">
+                    <button onclick="choosePayCash()" class="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-left active:scale-[0.98] transition">
+                        <span class="text-2xl">💵</span>
+                        <span class="flex-1">
+                            <span class="block font-bold text-sm" data-i18n="pay_cash">Naqd pul</span>
+                            <span class="block text-[11px] text-slate-500 dark:text-slate-400" data-i18n="pay_cash_sub">Buyurtma kelganda to'laysiz</span>
+                        </span>
+                    </button>
+
+                    <button onclick="choosePayCard()" class="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-left active:scale-[0.98] transition">
+                        <span class="text-2xl">💳</span>
+                        <span class="flex-1">
+                            <span class="block font-bold text-sm" data-i18n="pay_card">Kartadan</span>
+                            <span class="block text-[11px] text-slate-500 dark:text-slate-400" data-i18n="pay_card_sub">Avval to'laysiz, keyin buyurtma beriladi</span>
+                        </span>
+                    </button>
+                </div>
+
+                <button onclick="closePaymentModal()" class="mt-3 w-full py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold text-xs" data-i18n="pay_cancel">Bekor qilish</button>
+            </div>
+
+            <!-- STEP 2: card payment -->
+            <div id="pay-step-card" class="hidden">
+                <h3 class="font-extrabold text-center text-lg" data-i18n="pay_card_title">Kartaga to'lov qiling</h3>
+                <p class="text-xs text-center text-slate-500 dark:text-slate-400 mt-1" data-i18n="pay_card_hint">Quyidagi kartaga pul o'tkazing va to'lov skrinshotini yuklang.</p>
+
+                <div class="mt-4 rounded-2xl p-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+                    <p id="pay-card-bank" class="text-[10px] font-bold uppercase tracking-wider text-slate-300"></p>
+                    <p id="pay-card-number" class="font-mono font-extrabold text-lg tracking-wider mt-2"></p>
+                    <p id="pay-card-owner" class="text-xs text-slate-300 mt-1"></p>
+                </div>
+
+                <button onclick="copyCardNumber()" class="mt-2 w-full py-2 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold text-xs flex items-center justify-center gap-1.5">
+                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                    <span data-i18n="pay_copy_card">Karta raqamini nusxalash</span>
+                </button>
+
+                <div class="mt-3 flex justify-between text-sm font-extrabold">
+                    <span data-i18n="pay_amount_label">To'lov summasi:</span>
+                    <span id="pay-card-amount" class="text-rose-600"></span>
+                </div>
+
+                <label for="pay-screenshot" class="mt-3 block border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-3 text-center cursor-pointer">
+                    <input id="pay-screenshot" type="file" accept="image/*" class="hidden" onchange="handleScreenshotUpload(event)">
+                    <img id="pay-screenshot-preview" class="hidden mx-auto max-h-48 rounded-xl" alt="">
+                    <span id="pay-screenshot-placeholder" class="block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        <span class="block text-2xl mb-1">📸</span>
+                        <span data-i18n="pay_upload_hint">To'lov skrinshotini yuklash</span>
+                    </span>
+                </label>
+
+                <button id="pay-submit-btn" onclick="submitCardOrder()" disabled class="mt-3 w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-orange-500 hover:from-rose-700 hover:to-orange-600 text-white font-bold text-sm shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                    <span data-i18n="pay_submit_card">Buyurtmani yuborish</span>
+                </button>
+                <button onclick="backToPayChoose()" class="mt-2 w-full py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold text-xs" data-i18n="pay_back">← Orqaga</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RECEIPT VIEWER (seller) -->
+    <div id="receipt-modal" class="hidden fixed inset-0 z-50 bg-slate-900/85 flex items-center justify-center p-4" onclick="closeReceipt()">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-[400px] max-h-[90vh] overflow-y-auto rounded-3xl p-4 shadow-2xl slide-up" onclick="event.stopPropagation()">
+            <img id="receipt-img" class="w-full rounded-xl" alt="">
+            <button onclick="closeReceipt()" class="mt-3 w-full py-2.5 rounded-xl bg-rose-600 text-white font-bold text-xs">Yopish</button>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg flex items-center gap-2 whitespace-nowrap">
+        <span id="toast-icon">✅</span>
+        <span id="toast-text">Bajarildi</span>
+    </div>
+
+</div>
+
+<script>
+    // =========================================================================
+    // 1. MULTI-LANGUAGE DICTIONARY (UZBEK, RUSSIAN, ENGLISH)
+    // =========================================================================
+    const TRANSLATIONS = {
+        uz: {
+            welcome_badge: "Xush kelibsiz!",
+            reg_title: "Do'konga kirish uchun ro'yxatdan o'ting",
+            reg_subtitle: "SMS kod talab qilinmaydi — ma'lumotlaringizni kiriting va Xitoydan arzon narxlarda xarid qiling.",
+            label_fname: "Ismingiz *",
+            label_lname: "Familiyangiz *",
+            label_phone: "Telefon raqamingiz *",
+            label_address: "Viloyat / Shahar",
+            btn_enter_store: "Do'konga kirish",
+            seller_entry_link: "Sotuvchi uchun kirish",
+            seller_panel_badge: "Sotuvchi boshqaruvi",
+            back_to_customer: "← Xaridor kirishi",
+            seller_login_title: "Sotuvchi sifatida kirish",
+            seller_login_sub: "Mahsulot qo'shish va foyda hisobotini ko'rish uchun login va parolni kiriting.",
+            label_password: "Parol *",
+            btn_seller_login: "Boshqaruv paneliga kirish",
+            search_placeholder: "Mahsulot qidirish (telefon, soat, krossovka)...",
+            banner_tag: "🔥 Xitoydan birinchi qo'l",
+            banner_title: "Bozordan 2 barobar arzon narxlar!",
+            banner_sub: "12–18 kun ichida O'zbekiston bo'ylab yetkazib beramiz",
+            all_products: "Barcha mahsulotlar",
+            not_found_title: "Hech narsa topilmadi",
+            not_found_sub: "Boshqa so'z bilan qidirib ko'ring.",
+            show_all_btn: "Barcha tovarlarni ko'rish",
+            cart_title: "Savatchangiz",
+            clear_btn: "Tozalash",
+            cart_empty_title: "Savatcha hozircha bo'sh",
+            cart_empty_sub: "Xitoydan arzon narxdagi tovarlarni tanlang va buyurtma bering!",
+            back_to_shop: "Do'konga qaytish",
+            checkout_title: "Buyurtmani rasmiylashtirish",
+            items_count_label: "Tovarlar soni:",
+            total_sum_label: "Jami summa:",
+            place_order_btn: "Buyurtma berish",
+            pay_title: "To'lov usulini tanlang",
+            pay_cash: "Naqd pul",
+            pay_cash_sub: "Buyurtma kelganda to'laysiz",
+            pay_card: "Kartadan",
+            pay_card_sub: "Avval to'laysiz, keyin buyurtma beriladi",
+            pay_cancel: "Bekor qilish",
+            pay_card_title: "Kartaga to'lov qiling",
+            pay_card_hint: "Quyidagi kartaga pul o'tkazing va to'lov skrinshotini yuklang.",
+            pay_copy_card: "Karta raqamini nusxalash",
+            pay_amount_label: "To'lov summasi:",
+            pay_upload_hint: "To'lov skrinshotini yuklash",
+            pay_submit_card: "Buyurtmani yuborish",
+            pay_back: "← Orqaga",
+            add_product_title: "Yangi mahsulot qo'shish",
+            settings_title: "Profil va Sozlamalar",
+            save_btn: "Saqlash",
+            theme_label: "Mavzu (Tema)",
+            lang_label: "Ilova tili",
+            contact_seller_title: "Sotuvchi bilan bog'lanish",
+            contact_seller_sub: "Savollaringiz bo'lsa to'g'ridan-to'g'ri Telegram lichkaga yozing",
+            write_tg_btn: "Telegram",
+            logout_btn: "Akkauntdan chiqish (Rolni almashtirish)",
+            nav_shop: "Do'kon",
+            nav_cart: "Savatcha",
+            nav_add: "Qo'shish",
+            nav_report: "Hisobot",
+            nav_profile: "Profil",
+            add_to_cart_short: "Savatga",
+            buy_now_btn: "Hozir zakaz qilish"
+        },
+        ru: {
+            welcome_badge: "Добро пожаловать!",
+            reg_title: "Регистрация для входа в магазин",
+            reg_subtitle: "Без SMS-кода — введите ваши данные и заказывайте товары из Китая по низким ценам.",
+            label_fname: "Ваше имя *",
+            label_lname: "Ваша фамилия *",
+            label_phone: "Номер телефона *",
+            label_address: "Город / Область",
+            btn_enter_store: "Войти в магазин",
+            seller_entry_link: "Вход для продавца",
+            seller_panel_badge: "Панель продавца",
+            back_to_customer: "← Вход для покупателя",
+            seller_login_title: "Вход для продавца",
+            seller_login_sub: "Введите логин и пароль для управления товарами и отчётами.",
+            label_password: "Пароль *",
+            btn_seller_login: "Войти в панель",
+            search_placeholder: "Поиск товаров (телефон, часы, кроссовки)...",
+            banner_tag: "🔥 Напрямую из Китая",
+            banner_title: "Цены в 2 раза ниже рыночных!",
+            banner_sub: "Доставка по Узбекистану за 12–18 дней",
+            all_products: "Все товары",
+            not_found_title: "Ничего не найдено",
+            not_found_sub: "Попробуйте изменить запрос.",
+            show_all_btn: "Показать все товары",
+            cart_title: "Ваша корзина",
+            clear_btn: "Очистить",
+            cart_empty_title: "Корзина пока пуста",
+            cart_empty_sub: "Выберите товары из Китая и оформите заказ!",
+            back_to_shop: "Вернуться в магазин",
+            checkout_title: "Оформление заказа",
+            items_count_label: "Количество товаров:",
+            total_sum_label: "Итоговая сумма:",
+            place_order_btn: "Оформить заказ",
+            pay_title: "Выберите способ оплаты",
+            pay_cash: "Наличными",
+            pay_cash_sub: "Оплата при получении заказа",
+            pay_card: "Картой",
+            pay_card_sub: "Сначала оплата, затем оформление заказа",
+            pay_cancel: "Отмена",
+            pay_card_title: "Оплата на карту",
+            pay_card_hint: "Переведите деньги на карту ниже и загрузите скриншот оплаты.",
+            pay_copy_card: "Скопировать номер карты",
+            pay_amount_label: "Сумма к оплате:",
+            pay_upload_hint: "Загрузить скриншот оплаты",
+            pay_submit_card: "Отправить заказ",
+            pay_back: "← Назад",
+            add_product_title: "Добавить новый товар",
+            settings_title: "Профиль и Настройки",
+            save_btn: "Сохранить",
+            theme_label: "Тема оформления",
+            lang_label: "Язык приложения",
+            contact_seller_title: "Связаться с продавцом",
+            contact_seller_sub: "Напишите напрямую в личный Telegram продавца",
+            write_tg_btn: "Telegram",
+            logout_btn: "Выйти из аккаунта (Сменить роль)",
+            nav_shop: "Магазин",
+            nav_cart: "Корзина",
+            nav_add: "Добавить",
+            nav_report: "Отчёт",
+            nav_profile: "Профиль",
+            add_to_cart_short: "В корзину",
+            buy_now_btn: "Заказать сейчас"
+        },
+        en: {
+            welcome_badge: "Welcome!",
+            reg_title: "Register to Enter Store",
+            reg_subtitle: "No SMS code required — enter your details and shop directly from China.",
+            label_fname: "First Name *",
+            label_lname: "Last Name *",
+            label_phone: "Phone Number *",
+            label_address: "City / Region",
+            btn_enter_store: "Enter Store",
+            seller_entry_link: "Seller Login",
+            seller_panel_badge: "Seller Admin",
+            back_to_customer: "← Customer Entry",
+            seller_login_title: "Seller Login",
+            seller_login_sub: "Enter login and password to manage products and view profit analytics.",
+            label_password: "Password *",
+            btn_seller_login: "Open Dashboard",
+            search_placeholder: "Search products (phone, watch, sneakers)...",
+            banner_tag: "🔥 Direct from China",
+            banner_title: "Up to 2x Cheaper Than Local Markets!",
+            banner_sub: "Fast 12–18 days delivery across Uzbekistan",
+            all_products: "All Products",
+            not_found_title: "No products found",
+            not_found_sub: "Try searching with another keyword.",
+            show_all_btn: "Show All Products",
+            cart_title: "Your Cart",
+            clear_btn: "Clear",
+            cart_empty_title: "Your cart is empty",
+            cart_empty_sub: "Pick affordable items from China and place your order!",
+            back_to_shop: "Back to Shop",
+            checkout_title: "Checkout Details",
+            items_count_label: "Items count:",
+            total_sum_label: "Total amount:",
+            place_order_btn: "Place Order",
+            pay_title: "Choose payment method",
+            pay_cash: "Cash",
+            pay_cash_sub: "Pay when the order arrives",
+            pay_card: "Card",
+            pay_card_sub: "Pay first, then the order is placed",
+            pay_cancel: "Cancel",
+            pay_card_title: "Pay by card",
+            pay_card_hint: "Transfer the money to the card below and upload a screenshot of the payment.",
+            pay_copy_card: "Copy card number",
+            pay_amount_label: "Amount to pay:",
+            pay_upload_hint: "Upload payment screenshot",
+            pay_submit_card: "Submit order",
+            pay_back: "← Back",
+            add_product_title: "Add New Product",
+            settings_title: "Profile & Settings",
+            save_btn: "Save",
+            theme_label: "Theme Mode",
+            lang_label: "App Language",
+            contact_seller_title: "Contact Seller Directly",
+            contact_seller_sub: "Have questions? Message the seller directly on Telegram",
+            write_tg_btn: "Telegram",
+            logout_btn: "Log Out (Switch Role)",
+            nav_shop: "Shop",
+            nav_cart: "Cart",
+            nav_add: "Add",
+            nav_report: "Report",
+            nav_profile: "Profile",
+            add_to_cart_short: "Add to Cart",
+            buy_now_btn: "Order Now"
+        }
+    };
+
+    // =========================================================================
+    // 2. INITIAL PRODUCTS & SAMPLE SALES HISTORY
+    // =========================================================================
+    const DEFAULT_PRODUCTS = [
+        {
+            id: 1,
+            title: "Redmi Note 13 Pro 5G (12/256GB)",
+            category: "Telefonlar",
+            costPrice: 2250000,
+            price: 2650000,
+            oldPrice: 3100000,
+            delivery: "12-16 kun",
+            images: [
+                "https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=700&q=80",
+                "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=700&q=80"
+            ],
+            videoUrl: "https://www.youtube.com/results?search_query=Redmi+Note+13+Pro",
+            description: "200 MP kamera, 120Hz AMOLED ekran, 67W quvvatlagich. Shenchjen omboridan kafolat bilan."
+        },
+        {
+            id: 2,
+            title: "AirPods Pro 2 ANC (Lux Sifat)",
+            category: "Gadjetlar",
+            costPrice: 115000,
+            price: 185000,
+            oldPrice: 260000,
+            delivery: "14-18 kun",
+            images: [
+                "https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?auto=format&fit=crop&w=700&q=80"
+            ],
+            videoUrl: "",
+            description: "Shovqinni bosish (ANC), toza bass ovoz, iPhone va Androidga bir zumda ulanadi."
+        },
+        {
+            id: 3,
+            title: "Smart Watch Ultra 2 AMOLED + 3 ta remeshok",
+            category: "Gadjetlar",
+            costPrice: 155000,
+            price: 240000,
+            oldPrice: 350000,
+            delivery: "13-17 kun",
+            images: [
+                "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?auto=format&fit=crop&w=700&q=80"
+            ],
+            videoUrl: "",
+            description: "Suvga chidamli korpus, qo'ng'iroqlar va Telegram xabarlarni ko'rsatadi."
+        },
+        {
+            id: 4,
+            title: "Erkaklar yengil krossovkasi (39-44)",
+            category: "Kiyim & Poyabzal",
+            costPrice: 140000,
+            price: 215000,
+            oldPrice: 290000,
+            delivery: "15-20 kun",
+            images: [
+                "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=700&q=80"
+            ],
+            videoUrl: "",
+            description: "Yumshoq taglik, yugurish va kundalik kiyish uchun juda qulay."
+        },
+        {
+            id: 5,
+            title: "Mini Uy Kinoteatri Proyektor HY300",
+            category: "Gadjetlar",
+            costPrice: 490000,
+            price: 690000,
+            oldPrice: 890000,
+            delivery: "14-18 kun",
+            images: [
+                "https://images.unsplash.com/photo-1535016120720-40c646be5580?auto=format&fit=crop&w=700&q=80"
+            ],
+            videoUrl: "",
+            description: "Devorga 130 dyuymgacha tiniq tasvir tushiradi. Wi-Fi va YouTube o'rnatilgan."
+        },
+        {
+            id: 6,
+            title: "Powerbank 20000 mAh Tezkor 22.5W",
+            category: "Aksessuarlar",
+            costPrice: 110000,
+            price: 175000,
+            oldPrice: 230000,
+            delivery: "12-16 kun",
+            images: [
+                "https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?auto=format&fit=crop&w=700&q=80"
+            ],
+            videoUrl: "",
+            description: "Telefonni 4 martagacha to'liq quvvatlaydi, o'zida kabellari bor."
+        }
+    ];
+
+    const DEFAULT_SALES = [
+        {
+            id: 101,
+            dateISO: new Date().toISOString(),
+            dateDisplay: new Date().toLocaleString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            customerName: "Sardor Alimov",
+            customerPhone: "+998 90 345 12 89",
+            itemsSummary: "Smart Watch Ultra 2 (2 dona)",
+            qty: 2,
+            revenue: 480000,
+            profit: 170000
+        },
+        {
+            id: 102,
+            dateISO: new Date(Date.now() - 86400000 * 2).toISOString(),
+            dateDisplay: new Date(Date.now() - 86400000 * 2).toLocaleString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            customerName: "Madina Karimova",
+            customerPhone: "+998 93 771 44 10",
+            itemsSummary: "Redmi Note 13 Pro 5G (1 dona)",
+            qty: 1,
+            revenue: 2650000,
+            profit: 400000
+        },
+        {
+            id: 103,
+            dateISO: new Date(Date.now() - 86400000 * 4).toISOString(),
+            dateDisplay: new Date(Date.now() - 86400000 * 4).toLocaleString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            customerName: "Bobur Tursunov",
+            customerPhone: "+998 99 812 00 55",
+            itemsSummary: "AirPods Pro 2 ANC (3 dona)",
+            qty: 3,
+            revenue: 555000,
+            profit: 210000
+        }
+    ];
+
+    const CATEGORIES = ["Barchasi", "Telefonlar", "Gadjetlar", "Kiyim & Poyabzal", "Uy-ro'zg'or", "Aksessuarlar"];
+
+    // =========================================================================
+    // TO'LOV KARTASI — o'zingizning karta ma'lumotlaringizni shu yerga yozing
+    // =========================================================================
+    const PAYMENT_CARD = {
+        number: "8600 0000 0000 0000",
+        owner: "KARTA EGASI ISM FAMILIYASI",
+        bank: "Bank nomi"
+    };
+
+    // =========================================================================
+    // 3. APP STATE
+    // =========================================================================
+    let products = JSON.parse(localStorage.getItem('xb_products_v2')) || DEFAULT_PRODUCTS;
+    let salesHistory = JSON.parse(localStorage.getItem('xb_sales_v2')) || DEFAULT_SALES;
+    let cart = JSON.parse(localStorage.getItem('xb_cart_v2')) || [];
+    let currentUser = JSON.parse(localStorage.getItem('xb_user_v2')) || null;
+    let currentLang = localStorage.getItem('xb_lang_v2') || 'uz';
+    let currentTheme = localStorage.getItem('xb_theme_v2') || 'light';
+    let sellerConfig = JSON.parse(localStorage.getItem('xb_seller_cfg_v2')) || {
+        login: 'admin',
+        password: '12345',
+        username: 'xitoy_bozor_admin',
+        botToken: '',
+        chatId: ''
+    };
+
+    let selectedCategory = "Barchasi";
+    let searchQuery = "";
+    let salesFilter = "all";
+    let uploadedImagesBase64 = [];
+    let isModalVideoActive = false;
+    let lastFormattedOrderText = "";
+
+    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+    if (tg) {
+        tg.ready();
+        tg.expand();
+    }
+
+    // =========================================================================
+    // 4. AUTHENTICATION & ROLE GATE LOGIC
+    // =========================================================================
+    function toggleAuthMode(mode) {
+        const custBox = document.getElementById('customer-register-box');
+        const sellBox = document.getElementById('seller-login-box');
+        const subtleLink = document.getElementById('subtle-seller-trigger');
+
+        if (mode === 'seller') {
+            custBox.classList.add('hidden');
+            sellBox.classList.remove('hidden');
+            subtleLink.classList.add('hidden');
+        } else {
+            sellBox.classList.add('hidden');
+            custBox.classList.remove('hidden');
+            subtleLink.classList.remove('hidden');
+        }
+        lucide.createIcons();
+    }
+
+    function handleCustomerRegister(e) {
+        e.preventDefault();
+        const firstName = document.getElementById('reg-fname').value.trim();
+        const lastName = document.getElementById('reg-lname').value.trim();
+        const phone = document.getElementById('reg-phone').value.trim();
+
+        if (!firstName || !lastName || !phone) return;
+
+        currentUser = {
+            role: 'customer',
+            firstName,
+            lastName,
+            phone
+        };
+        localStorage.setItem('xb_user_v2', JSON.stringify(currentUser));
+        enterApp();
+        showToast(`Xush kelibsiz, ${firstName}!`, "🎉");
+    }
+
+    function handleSellerLogin(e) {
+        e.preventDefault();
+        const login = document.getElementById('seller-login-input').value.trim();
+        const pass = document.getElementById('seller-pass-input').value.trim();
+
+        if (login === sellerConfig.login && pass === sellerConfig.password) {
+            currentUser = {
+                role: 'seller',
+                firstName: 'Sotuvchi',
+                lastName: 'Admin',
+                phone: '@' + sellerConfig.username
+            };
+            localStorage.setItem('xb_user_v2', JSON.stringify(currentUser));
+            enterApp();
+            showToast("Sotuvchi paneliga kirdingiz!", "🔐");
+        } else {
+            showToast("Login yoki parol noto'g'ri!", "❌");
+        }
+    }
+
+    function logoutUser() {
+        currentUser = null;
+        localStorage.removeItem('xb_user_v2');
+        document.getElementById('main-app-wrapper').classList.add('hidden');
+        document.getElementById('auth-screen').classList.remove('hidden');
+        toggleAuthMode('customer');
+        lucide.createIcons();
+    }
+
+    function enterApp() {
+        document.getElementById('auth-screen').classList.add('hidden');
+        document.getElementById('main-app-wrapper').classList.remove('hidden');
+
+        const isSeller = currentUser && currentUser.role === 'seller';
+
+        // Strict Role UI Enforcement
+        const navAdmin = document.getElementById('nav-admin');
+        const navAnalytics = document.getElementById('nav-analytics');
+        const sellerSettingsBox = document.getElementById('seller-only-settings');
+        const custProfileEdit = document.getElementById('customer-profile-edit');
+        const roleBadge = document.getElementById('header-role-badge');
+
+        if (isSeller) {
+            navAdmin.classList.remove('hidden');
+            navAnalytics.classList.remove('hidden');
+            sellerSettingsBox.classList.remove('hidden');
+            custProfileEdit.classList.add('hidden');
+            roleBadge.textContent = "Sotuvchi";
+            roleBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300";
+        } else {
+            navAdmin.classList.add('hidden');
+            navAnalytics.classList.add('hidden');
+            sellerSettingsBox.classList.add('hidden');
+            custProfileEdit.classList.remove('hidden');
+            roleBadge.textContent = "Xaridor";
+            roleBadge.className = "text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300";
+        }
+
+        // Fill user profile & checkout defaults
+        document.getElementById('header-user-greeting').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+        document.getElementById('profile-fullname').textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+        document.getElementById('profile-phone-text').textContent = currentUser.phone;
+        document.getElementById('profile-role-tag').textContent = isSeller ? "Sotuvchi (Admin)" : "Xaridor";
+        document.getElementById('profile-avatar').textContent = (currentUser.firstName[0] + (currentUser.lastName[0] || '')).toUpperCase();
+
+        document.getElementById('edit-fname').value = currentUser.firstName;
+        document.getElementById('edit-lname').value = currentUser.lastName;
+        document.getElementById('edit-phone').value = currentUser.phone;
+
+
+        // Seller settings fields
+        document.getElementById('cfg-seller-username').value = sellerConfig.username || '';
+        document.getElementById('cfg-bot-token').value = sellerConfig.botToken || '';
+        document.getElementById('cfg-chat-id').value = sellerConfig.chatId || '';
+        document.getElementById('cfg-seller-pass').value = sellerConfig.password || '12345';
+
+        updateSellerTelegramLinks();
+        switchTab('catalog');
+    }
+
+    function updateSellerTelegramLinks() {
+        const cleanUser = (sellerConfig.username || 'xitoy_bozor_admin').replace('@', '');
+        const url = `https://t.me/${cleanUser}`;
+        document.getElementById('header-seller-tg-link').href = url;
+        document.getElementById('settings-seller-tg-btn').href = url;
+    }
+
+    // =========================================================================
+    // 5. THEME (LIGHT / DARK) & LANGUAGE (UZ / RU / EN)
+    // =========================================================================
+    function setTheme(theme) {
+        currentTheme = theme;
+        localStorage.setItem('xb_theme_v2', theme);
+        const htmlEl = document.documentElement;
+        const iconEl = document.getElementById('theme-header-icon');
+        const descEl = document.getElementById('current-theme-desc');
+        const btnLight = document.getElementById('btn-theme-light');
+        const btnDark = document.getElementById('btn-theme-dark');
+
+        if (theme === 'dark') {
+            htmlEl.classList.add('dark');
+            if (iconEl) iconEl.setAttribute('data-lucide', 'sun');
+            if (descEl) descEl.textContent = "Qorong'u rejim";
+            if (btnDark) btnDark.className = "px-3 py-1.5 rounded-lg bg-slate-700 text-white shadow-xs transition";
+            if (btnLight) btnLight.className = "px-3 py-1.5 rounded-lg text-slate-400 transition";
+        } else {
+            htmlEl.classList.remove('dark');
+            if (iconEl) iconEl.setAttribute('data-lucide', 'moon');
+            if (descEl) descEl.textContent = "Kunduzgi rejim";
+            if (btnLight) btnLight.className = "px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-xs transition";
+            if (btnDark) btnDark.className = "px-3 py-1.5 rounded-lg text-slate-500 transition";
+        }
+        lucide.createIcons();
+    }
+
+    function toggleTheme() {
+        setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+    }
+
+    function setLanguage(lang) {
+        currentLang = lang;
+        localStorage.setItem('xb_lang_v2', lang);
+        const dict = TRANSLATIONS[lang] || TRANSLATIONS.uz;
+
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (dict[key]) el.textContent = dict[key];
+        });
+
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            const key = el.getAttribute('data-i18n-placeholder');
+            if (dict[key]) el.placeholder = dict[key];
+        });
+
+        // Update active language buttons
+        ['uz', 'ru', 'en'].forEach(l => {
+            document.querySelectorAll(`.lang-pill-${l}`).forEach(btn => {
+                btn.className = l === lang 
+                    ? `lang-pill-${l} px-2 py-1 rounded-lg bg-white dark:bg-slate-700 text-rose-600 dark:text-white shadow-2xs transition`
+                    : `lang-pill-${l} px-2 py-1 rounded-lg text-slate-500 transition`;
+            });
+            document.querySelectorAll(`.lang-btn-${l}`).forEach(btn => {
+                btn.className = l === lang
+                    ? `lang-btn-${l} py-2 rounded-xl text-xs font-bold border border-rose-500 bg-rose-50 dark:bg-rose-500/15 text-rose-600 dark:text-rose-300 transition`
+                    : `lang-btn-${l} py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition`;
+            });
+        });
+    }
+
+    // =========================================================================
+    // 6. CATALOG, SEARCH & PRODUCT MODAL
+    // =========================================================================
+    function formatUZS(num) {
+        return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " so'm";
+    }
+
+    function showToast(text, icon = "✅") {
+        const toast = document.getElementById('toast');
+        document.getElementById('toast-text').textContent = text;
+        document.getElementById('toast-icon').textContent = icon;
+        toast.classList.remove('hidden');
+        clearTimeout(window._toastTimer);
+        window._toastTimer = setTimeout(() => toast.classList.add('hidden'), 2300);
+    }
+
+    function renderCategories() {
+        const container = document.getElementById('category-list');
+        container.innerHTML = CATEGORIES.map(cat => {
+            const active = cat === selectedCategory;
+            return `
+                <button 
+                    onclick="selectCategory('${cat.replace(/'/g, "\\'")}')"
+                    class="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition ${
+                        active 
+                        ? 'bg-slate-900 dark:bg-rose-600 text-white shadow-sm' 
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700'
+                    }"
+                >
+                    ${cat}
+                </button>
+            `;
+        }).join('');
+    }
+
+    function selectCategory(cat) {
+        selectedCategory = cat;
+        renderCategories();
+        renderProducts();
+    }
+
+    function handleSearch(val) {
+        searchQuery = val.trim().toLowerCase();
+        const clearBtn = document.getElementById('clear-search-btn');
+        const hero = document.getElementById('hero-section');
+        if (searchQuery.length > 0) {
+            clearBtn.classList.remove('hidden');
+            hero.classList.add('hidden');
+            switchTab('catalog');
+        } else {
+            clearBtn.classList.add('hidden');
+            hero.classList.remove('hidden');
+        }
+        renderProducts();
+    }
+
+    function clearSearch() {
+        document.getElementById('search-input').value = "";
+        selectedCategory = "Barchasi";
+        handleSearch("");
+        renderCategories();
+    }
+
+    function renderProducts() {
+        const grid = document.getElementById('products-grid');
+        const empty = document.getElementById('empty-state');
+        const countEl = document.getElementById('product-count');
+        const isSeller = currentUser && currentUser.role === 'seller';
+
+        const filtered = products.filter(p => {
+            const matchCat = selectedCategory === "Barchasi" || p.category === selectedCategory;
+            const matchQuery = !searchQuery || 
+                p.title.toLowerCase().includes(searchQuery) || 
+                p.category.toLowerCase().includes(searchQuery) ||
+                (p.description && p.description.toLowerCase().includes(searchQuery));
+            return matchCat && matchQuery;
+        });
+
+        countEl.textContent = `${filtered.length} ta`;
+
+        if (filtered.length === 0) {
+            grid.innerHTML = "";
+            empty.classList.remove('hidden');
+            return;
+        }
+
+        empty.classList.add('hidden');
+        grid.innerHTML = filtered.map(p => {
+            const mainImg = p.images && p.images.length ? p.images[0] : 'https://placehold.co/400x400/e2e8f0/475569?text=Xitoy+Bozor';
+            const profitPerItem = p.price - (p.costPrice || Math.round(p.price * 0.7));
+            return `
+                <div class="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-xs border border-slate-100 dark:border-slate-700/80 flex flex-col justify-between group transition">
+                    <div onclick="openProductModal(${p.id})" class="relative aspect-square bg-slate-100 dark:bg-slate-700 cursor-pointer overflow-hidden">
+                        <img src="${mainImg}" alt="${p.title}" loading="lazy" onerror="this.src='https://placehold.co/400x400/e2e8f0/475569?text=Xitoy+Bozor'" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                        <span class="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            🚚 ${p.delivery}
+                        </span>
+                        ${isSeller ? `
+                            <span class="absolute bottom-2 left-2 bg-emerald-600/95 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+                                Foyda: +${formatUZS(profitPerItem)}
+                            </span>
+                        ` : ''}
+                    </div>
+
+                    <div class="p-2.5 flex-1 flex flex-col justify-between">
+                        <div onclick="openProductModal(${p.id})" class="cursor-pointer">
+                            <p class="text-[10px] font-semibold text-slate-400">${p.category}</p>
+                            <h4 class="font-bold text-xs line-clamp-2 mt-0.5 leading-snug min-h-[32px]">${p.title}</h4>
+                        </div>
+
+                        <div class="mt-2 pt-2 border-t border-slate-50 dark:border-slate-700/60">
+                            ${p.oldPrice ? `<div class="text-[10px] text-slate-400 line-through leading-none mb-0.5">${formatUZS(p.oldPrice)}</div>` : ''}
+                            <div class="font-extrabold text-sm">${formatUZS(p.price)}</div>
+                            
+                            <button onclick="addToCart(${p.id})" class="mt-2 w-full py-2 rounded-xl bg-rose-50 dark:bg-rose-500/15 hover:bg-rose-600 text-rose-600 dark:text-rose-400 hover:text-white font-bold text-xs transition flex items-center justify-center gap-1 active:scale-95">
+                                <i data-lucide="shopping-bag" class="w-3.5 h-3.5"></i>
+                                <span>${TRANSLATIONS[currentLang].add_to_cart_short}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        lucide.createIcons();
+    }
+
+    function openProductModal(id) {
+        const product = products.find(p => p.id === id);
+        if (!product) return;
+        isModalVideoActive = false;
+
+        document.getElementById('modal-video-box').classList.add('hidden');
+        document.getElementById('modal-main-img').src = product.images[0];
+        document.getElementById('modal-category').textContent = product.category;
+        document.getElementById('modal-title').textContent = product.title;
+        document.getElementById('modal-price').textContent = formatUZS(product.price);
+        document.getElementById('modal-old-price').textContent = product.oldPrice ? formatUZS(product.oldPrice) : '';
+        document.getElementById('modal-delivery').textContent = product.delivery;
+        document.getElementById('modal-desc').textContent = product.description || "";
+
+        const vidToggle = document.getElementById('modal-video-toggle');
+        if (product.videoUrl) {
+            vidToggle.classList.remove('hidden');
+            document.getElementById('modal-video-link').href = product.videoUrl;
+        } else {
+            vidToggle.classList.add('hidden');
+        }
+
+        const thumbs = document.getElementById('modal-thumbnails');
+        thumbs.innerHTML = product.images.map((img, idx) => `
+            <button onclick="setModalImage('${img}', this)" class="thumb-btn w-14 h-14 rounded-xl overflow-hidden border-2 ${idx === 0 ? 'border-rose-600' : 'border-transparent'} shrink-0">
+                <img src="${img}" class="w-full h-full object-cover">
+            </button>
+        `).join('');
+
+        document.getElementById('modal-add-cart-btn').onclick = () => {
+            addToCart(product.id);
+            closeProductModal();
+        };
+        document.getElementById('modal-buy-now-btn').onclick = () => {
+            addToCart(product.id, false);
+            closeProductModal();
+            switchTab('cart');
+        };
+
+        document.getElementById('product-modal').classList.remove('hidden');
+        lucide.createIcons();
+    }
+
+    function setModalImage(src, btnEl) {
+        isModalVideoActive = false;
+        document.getElementById('modal-video-box').classList.add('hidden');
+        document.getElementById('modal-main-img').src = src;
+        document.querySelectorAll('.thumb-btn').forEach(b => b.classList.replace('border-rose-600', 'border-transparent'));
+        if (btnEl) btnEl.classList.replace('border-transparent', 'border-rose-600');
+    }
+
+    function toggleModalVideo() {
+        isModalVideoActive = !isModalVideoActive;
+        document.getElementById('modal-video-box').classList.toggle('hidden', !isModalVideoActive);
+    }
+
+    function closeProductModal() {
+        document.getElementById('product-modal').classList.add('hidden');
+    }
+
+    // =========================================================================
+    // 7. CART & ORDER SUBMISSION (RECORDS TO SELLER PROFIT LOG + TELEGRAM)
+    // =========================================================================
+    function saveCart() {
+        localStorage.setItem('xb_cart_v2', JSON.stringify(cart));
+        updateCartBadge();
+    }
+
+    function updateCartBadge() {
+        const badge = document.getElementById('cart-badge');
+        const totalQty = cart.reduce((acc, item) => acc + item.qty, 0);
+        if (totalQty > 0) {
+            badge.textContent = totalQty;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+
+    function addToCart(productId, notify = true) {
+        const existing = cart.find(i => i.id === productId);
+        if (existing) existing.qty += 1;
+        else cart.push({ id: productId, qty: 1 });
+        saveCart();
+        if (notify) showToast("Savatga qo'shildi!");
+    }
+
+    function changeCartQty(productId, delta) {
+        const idx = cart.findIndex(i => i.id === productId);
+        if (idx === -1) return;
+        cart[idx].qty += delta;
+        if (cart[idx].qty <= 0) cart.splice(idx, 1);
+        saveCart();
+        renderCart();
+    }
+
+    function clearCart() {
+        cart = [];
+        saveCart();
+        renderCart();
+    }
+
+    function renderCart() {
+        const container = document.getElementById('cart-items-container');
+        const emptyBox = document.getElementById('empty-cart');
+        const formBox = document.getElementById('checkout-form-box');
+        const clearBtn = document.getElementById('clear-cart-btn');
+
+        if (cart.length === 0) {
+            container.innerHTML = "";
+            emptyBox.classList.remove('hidden');
+            formBox.classList.add('hidden');
+            clearBtn.classList.add('hidden');
+            return;
+        }
+
+        emptyBox.classList.add('hidden');
+        formBox.classList.remove('hidden');
+        clearBtn.classList.remove('hidden');
+
+        let totalSum = 0;
+        let totalCount = 0;
+
+        container.innerHTML = cart.map(item => {
+            const p = products.find(prod => prod.id === item.id);
+            if (!p) return '';
+            const sub = p.price * item.qty;
+            totalSum += sub;
+            totalCount += item.qty;
+
+            return `
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-3 shadow-xs border border-slate-100 dark:border-slate-700 flex items-center gap-3">
+                    <img src="${p.images[0]}" class="w-16 h-16 rounded-xl object-cover shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-bold text-xs truncate">${p.title}</h4>
+                        <p class="text-[11px] text-slate-400 mt-0.5">🚚 ${p.delivery}</p>
+                        <p class="font-extrabold text-sm text-rose-600 mt-1">${formatUZS(sub)}</p>
+                    </div>
+                    <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 rounded-xl p-1">
+                        <button onclick="changeCartQty(${p.id}, -1)" class="w-7 h-7 rounded-lg bg-white dark:bg-slate-800 font-bold text-sm flex items-center justify-center">-</button>
+                        <span class="text-xs font-extrabold w-4 text-center">${item.qty}</span>
+                        <button onclick="changeCartQty(${p.id}, 1)" class="w-7 h-7 rounded-lg bg-white dark:bg-slate-800 font-bold text-sm flex items-center justify-center">+</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        document.getElementById('summary-count').textContent = `${totalCount} ta`;
+        document.getElementById('summary-total').textContent = formatUZS(totalSum);
+    }
+
+    // ---------------------------------------------------------------------
+    // PAYMENT FLOW (naqd / karta)
+    // ---------------------------------------------------------------------
+    let pendingPayScreenshot = null;
+
+    function getCartTotal() {
+        return cart.reduce((sum, item) => {
+            const p = products.find(prod => prod.id === item.id);
+            return sum + (p ? p.price * item.qty : 0);
+        }, 0);
+    }
+
+    function resetScreenshotUI() {
+        pendingPayScreenshot = null;
+        const input = document.getElementById('pay-screenshot');
+        const preview = document.getElementById('pay-screenshot-preview');
+        const placeholder = document.getElementById('pay-screenshot-placeholder');
+        const btn = document.getElementById('pay-submit-btn');
+        if (input) input.value = '';
+        preview.src = '';
+        preview.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+        btn.disabled = true;
+    }
+
+    function openPaymentModal() {
+        if (cart.length === 0) return;
+        resetScreenshotUI();
+        document.getElementById('pay-total').textContent = formatUZS(getCartTotal());
+        document.getElementById('pay-step-choose').classList.remove('hidden');
+        document.getElementById('pay-step-card').classList.add('hidden');
+        document.getElementById('payment-modal').classList.remove('hidden');
+        lucide.createIcons();
+    }
+
+    function closePaymentModal() {
+        document.getElementById('payment-modal').classList.add('hidden');
+    }
+
+    function choosePayCash() {
+        closePaymentModal();
+        submitOrder('cash', null);
+    }
+
+    function choosePayCard() {
+        document.getElementById('pay-card-bank').textContent = PAYMENT_CARD.bank;
+        document.getElementById('pay-card-number').textContent = PAYMENT_CARD.number;
+        document.getElementById('pay-card-owner').textContent = PAYMENT_CARD.owner;
+        document.getElementById('pay-card-amount').textContent = formatUZS(getCartTotal());
+        document.getElementById('pay-step-choose').classList.add('hidden');
+        document.getElementById('pay-step-card').classList.remove('hidden');
+        lucide.createIcons();
+    }
+
+    function backToPayChoose() {
+        document.getElementById('pay-step-card').classList.add('hidden');
+        document.getElementById('pay-step-choose').classList.remove('hidden');
+    }
+
+    function copyCardNumber() {
+        const temp = document.createElement('textarea');
+        temp.value = PAYMENT_CARD.number.replace(/\s/g, '');
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+        showToast("Karta raqami nusxalandi!");
+    }
+
+    // Screenshot is shrunk before saving so it does not fill up the browser storage
+    function compressImage(file, maxSide = 1280, quality = 0.7) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = reject;
+            reader.onload = () => {
+                const img = new Image();
+                img.onerror = reject;
+                img.onload = () => {
+                    const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+                    const w = Math.round(img.width * scale);
+                    const h = Math.round(img.height * scale);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
+                };
+                img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function handleScreenshotUpload(event) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+        try {
+            pendingPayScreenshot = await compressImage(file);
+            const preview = document.getElementById('pay-screenshot-preview');
+            preview.src = pendingPayScreenshot;
+            preview.classList.remove('hidden');
+            document.getElementById('pay-screenshot-placeholder').classList.add('hidden');
+            document.getElementById('pay-submit-btn').disabled = false;
+        } catch (e) {
+            pendingPayScreenshot = null;
+            document.getElementById('pay-submit-btn').disabled = true;
+            showToast("Rasmni yuklab bo'lmadi, qayta urinib ko'ring", "⚠️");
+        }
+    }
+
+    function submitCardOrder() {
+        if (!pendingPayScreenshot) {
+            showToast("Avval to'lov skrinshotini yuklang!", "⚠️");
+            return;
+        }
+        const screenshot = pendingPayScreenshot;
+        closePaymentModal();
+        submitOrder('card', screenshot);
+    }
+
+    async function submitOrder(paymentMethod = 'cash', screenshot = null) {
+        if (cart.length === 0) return;
+
+        // Ism va telefon ro'yxatdan o'tishda kiritilgan profildan olinadi
+        const name = `${currentUser.firstName} ${currentUser.lastName || ''}`.trim();
+        const phone = currentUser.phone;
+
+        const now = new Date();
+        const timeStr = now.toLocaleString('uz-UZ', {
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit'
+        });
+
+        let totalRevenue = 0;
+        let totalProfit = 0;
+        let totalQty = 0;
+        const shortItems = [];
+
+        const lines = cart.map((item, idx) => {
+            const p = products.find(prod => prod.id === item.id);
+            const subRev = p.price * item.qty;
+            const unitCost = p.costPrice || Math.round(p.price * 0.72);
+            const subProfit = (p.price - unitCost) * item.qty;
+
+            totalRevenue += subRev;
+            totalProfit += subProfit;
+            totalQty += item.qty;
+            shortItems.push(`${p.title} (${item.qty} dona)`);
+
+            return `${idx + 1}. ${p.title} (${item.qty} dona) — ${formatUZS(subRev)} [${p.delivery}]`;
+        }).join('\n');
+
+        const paymentLine = paymentMethod === 'card'
+            ? "💳 To'lov: Kartadan (to'langan, chek yuklangan)"
+            : "💵 To'lov: Naqd (buyurtma kelganda)";
+
+        // Record into Seller Sales & Profit Analytics
+        const saleRecord = {
+            id: Date.now(),
+            dateISO: now.toISOString(),
+            dateDisplay: timeStr,
+            customerName: name,
+            customerPhone: phone,
+            itemsSummary: shortItems.join(', '),
+            qty: totalQty,
+            revenue: totalRevenue,
+            profit: totalProfit,
+            paymentMethod: paymentMethod,
+            paymentScreenshot: screenshot
+        };
+        salesHistory.unshift(saleRecord);
+        try {
+            localStorage.setItem('xb_sales_v2', JSON.stringify(salesHistory));
+        } catch (e) {
+            // Xotira to'lib qolsa, buyurtma baribir saqlansin (chek rasmisiz)
+            saleRecord.paymentScreenshot = null;
+            try { localStorage.setItem('xb_sales_v2', JSON.stringify(salesHistory)); } catch (e2) {}
+        }
+
+        lastFormattedOrderText = 
+`🛍 YANGI BUYURTMA (Xitoy Bozor)
+━━━━━━━━━━━━━━━
+👤 Mijoz: ${name}
+📞 Telefon: ${phone}
+🕒 Vaqt: ${timeStr}
+${paymentLine}
+
+📦 Mahsulotlar:
+${lines}
+
+💰 JAMI SUMMA: ${formatUZS(totalRevenue)}`;
+
+        document.getElementById('telegram-message-preview').textContent = lastFormattedOrderText;
+        document.getElementById('order-success-modal').classList.remove('hidden');
+
+        // Send to Telegram Bot if configured
+        if (sellerConfig.botToken && sellerConfig.chatId) {
+            try {
+                await fetch(`https://api.telegram.org/bot${sellerConfig.botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: sellerConfig.chatId,
+                        text: lastFormattedOrderText
+                    })
+                });
+
+                // Karta orqali to'langan bo'lsa — chek skrinshotini ham yuboramiz
+                if (paymentMethod === 'card' && screenshot) {
+                    const blob = await (await fetch(screenshot)).blob();
+                    const form = new FormData();
+                    form.append('chat_id', sellerConfig.chatId);
+                    form.append('caption', `🧾 To'lov cheki — ${name}, ${phone}\n💰 ${formatUZS(totalRevenue)}`);
+                    form.append('photo', blob, 'chek.jpg');
+                    await fetch(`https://api.telegram.org/bot${sellerConfig.botToken}/sendPhoto`, {
+                        method: 'POST',
+                        body: form
+                    });
+                }
+            } catch (e) {}
+        }
+
+        cart = [];
+        saveCart();
+        renderCart();
+        lucide.createIcons();
+    }
+
+    function viewReceipt(saleId) {
+        const sale = salesHistory.find(x => x.id === saleId);
+        if (!sale || !sale.paymentScreenshot) return;
+        document.getElementById('receipt-img').src = sale.paymentScreenshot;
+        document.getElementById('receipt-modal').classList.remove('hidden');
+    }
+
+    function closeReceipt() {
+        document.getElementById('receipt-modal').classList.add('hidden');
+        document.getElementById('receipt-img').src = '';
+    }
+
+    function copyOrderText() {
+        const temp = document.createElement('textarea');
+        temp.value = lastFormattedOrderText;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+        showToast("Nusxa olindi!");
+    }
+
+    function closeOrderModal() {
+        document.getElementById('order-success-modal').classList.add('hidden');
+        switchTab('catalog');
+    }
+
+    // =========================================================================
+    // 8. SELLER ADMIN: ADD/DELETE PRODUCTS & SALES ANALYTICS
+    // =========================================================================
+    function previewUploadedImages(event) {
+        const files = Array.from(event.target.files).slice(0, 4);
+        uploadedImagesBase64 = [];
+        const strip = document.getElementById('upload-preview-strip');
+        strip.innerHTML = "";
+
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadedImagesBase64.push(e.target.result);
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.className = "w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0";
+                strip.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function handleAddProduct(e) {
+        e.preventDefault();
+        if (!currentUser || currentUser.role !== 'seller') return;
+
+        const title = document.getElementById('new-title').value.trim();
+        const costPrice = parseInt(document.getElementById('new-cost').value, 10);
+        const price = parseInt(document.getElementById('new-price').value, 10);
+        const delivery = document.getElementById('new-delivery').value.trim();
+        const category = document.getElementById('new-category').value;
+        const urlInput = document.getElementById('new-image-url').value.trim();
+        const videoUrl = document.getElementById('new-video-url').value.trim();
+        const desc = document.getElementById('new-desc').value.trim();
+
+        let finalImages = [...uploadedImagesBase64];
+        if (urlInput) finalImages.push(urlInput);
+        if (finalImages.length === 0) {
+            finalImages.push("https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=700&q=80");
+        }
+
+        products.unshift({
+            id: Date.now(),
+            title,
+            category,
+            costPrice,
+            price,
+            oldPrice: Math.round(price * 1.25),
+            delivery,
+            images: finalImages,
+            videoUrl,
+            description: desc || "Xitoydan yangi kelgan sifatli mahsulot."
+        });
+
+        localStorage.setItem('xb_products_v2', JSON.stringify(products));
+        e.target.reset();
+        uploadedImagesBase64 = [];
+        document.getElementById('upload-preview-strip').innerHTML = "";
+
+        showToast("Yangi mahsulot qo'shildi!", "🎉");
+        renderAdminProductList();
+        switchTab('catalog');
+    }
+
+    function deleteProduct(id) {
+        products = products.filter(p => p.id !== id);
+        localStorage.setItem('xb_products_v2', JSON.stringify(products));
+        renderAdminProductList();
+        renderProducts();
+        showToast("Mahsulot o'chirildi", "🗑️");
+    }
+
+    function renderAdminProductList() {
+        const list = document.getElementById('admin-product-list');
+        list.innerHTML = products.map(p => `
+            <div class="bg-white dark:bg-slate-800 rounded-xl p-2.5 border border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2.5">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <img src="${p.images[0]}" class="w-10 h-10 rounded-lg object-cover shrink-0">
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold truncate">${p.title}</p>
+                        <p class="text-[11px] text-slate-500">Sotuv: ${formatUZS(p.price)} • Foyda: +${formatUZS(p.price - (p.costPrice || 0))}</p>
+                    </div>
+                </div>
+                <button onclick="deleteProduct(${p.id})" class="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/15 rounded-lg shrink-0">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+            </div>
+        `).join('');
+        lucide.createIcons();
+    }
+
+    function setSalesFilter(filter) {
+        salesFilter = filter;
+        ['all', 'today', 'week'].forEach(f => {
+            const btn = document.getElementById(`filter-${f}`);
+            btn.className = f === filter
+                ? "sales-filter-btn px-3 py-1.5 rounded-full text-xs font-bold bg-slate-900 text-white dark:bg-rose-600"
+                : "sales-filter-btn px-3 py-1.5 rounded-full text-xs font-bold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700";
+        });
+        renderSalesAnalytics();
+    }
+
+    function renderSalesAnalytics() {
+        const now = Date.now();
+        const filtered = salesHistory.filter(s => {
+            const ts = new Date(s.dateISO).getTime();
+            if (salesFilter === 'today') return (now - ts) <= 86400000;
+            if (salesFilter === 'week') return (now - ts) <= 86400000 * 7;
+            return true;
+        });
+
+        const totalQty = filtered.reduce((sum, s) => sum + s.qty, 0);
+        const totalRev = filtered.reduce((sum, s) => sum + s.revenue, 0);
+        const totalProf = filtered.reduce((sum, s) => sum + s.profit, 0);
+
+        document.getElementById('kpi-sold-qty').textContent = `${totalQty} dona`;
+        document.getElementById('kpi-revenue').textContent = formatUZS(totalRev);
+        document.getElementById('kpi-profit').textContent = `+${formatUZS(totalProf)}`;
+
+        const list = document.getElementById('sales-history-list');
+        if (filtered.length === 0) {
+            list.innerHTML = `<div class="text-center py-8 text-xs text-slate-400">Tanlangan davrda sotuvlar yo'q</div>`;
+            return;
+        }
+
+        list.innerHTML = filtered.map(s => `
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-3.5 border border-slate-100 dark:border-slate-700 shadow-2xs">
+                <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
+                    <span class="flex items-center gap-1 font-medium">
+                        <i data-lucide="calendar" class="w-3 h-3"></i>
+                        ${s.dateDisplay}
+                    </span>
+                    <span class="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 font-bold">
+                        Foyda: +${formatUZS(s.profit)}
+                    </span>
+                </div>
+                <p class="font-bold text-xs text-slate-800 dark:text-slate-100">${s.itemsSummary}</p>
+                <div class="mt-2 pt-2 border-t border-slate-50 dark:border-slate-700/60 flex items-center justify-between text-[11px]">
+                    <span class="text-slate-500 dark:text-slate-400">👤 ${s.customerName} (${s.customerPhone})</span>
+                    <span class="font-extrabold text-slate-900 dark:text-white">${formatUZS(s.revenue)}</span>
+                </div>
+                ${s.paymentMethod ? `
+                <div class="mt-2 flex items-center justify-between text-[11px]">
+                    <span class="px-2 py-0.5 rounded-full bg-sky-50 dark:bg-sky-500/15 text-sky-600 dark:text-sky-300 font-bold">
+                        ${s.paymentMethod === 'card' ? "💳 Kartadan to'langan" : "💵 Naqd (kelganda)"}
+                    </span>
+                    ${s.paymentScreenshot ? `<button onclick="viewReceipt(${s.id})" class="text-rose-600 font-bold">🧾 Chekni ko'rish</button>` : ''}
+                </div>` : ''}
+            </div>
+        `).join('');
+        lucide.createIcons();
+    }
+
+    // =========================================================================
+    // 9. SETTINGS UPDATES
+    // =========================================================================
+    function saveCustomerProfileEdit() {
+        const fn = document.getElementById('edit-fname').value.trim();
+        const ln = document.getElementById('edit-lname').value.trim();
+        const ph = document.getElementById('edit-phone').value.trim();
+        if (!fn || !ph) return;
+
+        currentUser.firstName = fn;
+        currentUser.lastName = ln;
+        currentUser.phone = ph;
+        localStorage.setItem('xb_user_v2', JSON.stringify(currentUser));
+        enterApp();
+        switchTab('settings');
+        showToast("Profil yangilandi!");
+    }
+
+    function saveSellerConfig() {
+        sellerConfig.username = document.getElementById('cfg-seller-username').value.trim().replace('@', '') || 'xitoy_bozor_admin';
+        sellerConfig.botToken = document.getElementById('cfg-bot-token').value.trim();
+        sellerConfig.chatId = document.getElementById('cfg-chat-id').value.trim();
+        sellerConfig.password = document.getElementById('cfg-seller-pass').value.trim() || '12345';
+
+        localStorage.setItem('xb_seller_cfg_v2', JSON.stringify(sellerConfig));
+        updateSellerTelegramLinks();
+        showToast("Sotuvchi sozlamalari saqlandi!");
+    }
+
+    // =========================================================================
+    // 10. NAVIGATION & INITIALIZATION
+    // =========================================================================
+    function switchTab(tab) {
+        const isSeller = currentUser && currentUser.role === 'seller';
+        if ((tab === 'admin' || tab === 'analytics') && !isSeller) {
+            tab = 'catalog';
+        }
+
+        ['catalog', 'cart', 'admin', 'analytics', 'settings'].forEach(t => {
+            document.getElementById(`view-${t}`).classList.add('hidden');
+        });
+        document.getElementById(`view-${tab}`).classList.remove('hidden');
+
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.remove('text-rose-600', 'font-bold');
+            btn.classList.add('text-slate-500', 'dark:text-slate-400', 'font-medium');
+        });
+        const activeBtn = document.getElementById(`nav-${tab}`);
+        if (activeBtn) {
+            activeBtn.classList.remove('text-slate-500', 'dark:text-slate-400', 'font-medium');
+            activeBtn.classList.add('text-rose-600', 'font-bold');
+        }
+
+        if (tab === 'catalog') {
+            renderCategories();
+            renderProducts();
+        }
+        if (tab === 'cart') renderCart();
+        if (tab === 'admin') renderAdminProductList();
+        if (tab === 'analytics') renderSalesAnalytics();
+        lucide.createIcons();
+    }
+
+    window.onload = function () {
+        setTheme(currentTheme);
+        setLanguage(currentLang);
+        updateCartBadge();
+
+        if (currentUser) {
+            enterApp();
+        } else {
+            document.getElementById('auth-screen').classList.remove('hidden');
+            lucide.createIcons();
+        }
+    };
+</script>
+</body>
+</html>
