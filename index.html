@@ -24,6 +24,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase (umumiy baza) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -517,7 +519,7 @@
                             <h4 class="font-extrabold text-sm" data-i18n="contact_seller_title">Sotuvchi bilan bog'lanish</h4>
                             <p class="text-xs text-sky-100 mt-0.5" data-i18n="contact_seller_sub">Savollaringiz bo'lsa to'g'ridan-to'g'ri Telegram lichkaga yozing</p>
                         </div>
-                        <a id="settings-seller-tg-btn" href="https://t.me/dilnoza12_13" target="_blank" class="shrink-0 px-4 py-2.5 rounded-xl bg-white text-sky-600 font-extrabold text-xs shadow-sm flex items-center gap-1.5 active:scale-95 transition">
+                        <a id="settings-seller-tg-btn" href="https://t.me/xitoy_bozor_admin" target="_blank" class="shrink-0 px-4 py-2.5 rounded-xl bg-white text-sky-600 font-extrabold text-xs shadow-sm flex items-center gap-1.5 active:scale-95 transition">
                             <i data-lucide="send" class="w-3.5 h-3.5"></i>
                             <span data-i18n="write_tg_btn">Telegram</span>
                         </a>
@@ -1105,10 +1107,25 @@
     };
 
     // =========================================================================
+    // SUPABASE (UMUMIY BAZA) — Supabase → Project Settings → API dan oling.
+    // Ikkalasi ham bo'sh bo'lsa, sayt eski usulda (faqat shu telefon xotirasida) ishlaydi.
+    // =========================================================================
+    const SUPABASE_URL = "";        // masalan: "https://abcdxyz.supabase.co"
+    const SUPABASE_ANON_KEY = "";   // "anon public" kalit. service_role kalitni BU YERGA YOZMANG!
+
+    const sb = (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase)
+        ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+        : null;
+    const DB_ON = !!sb;
+    const DB_CONFIGURED = !!(SUPABASE_URL && SUPABASE_ANON_KEY); // kalitlar yozilgan, lekin kutubxona yuklanmagan bo'lishi mumkin
+
+    // =========================================================================
     // 3. APP STATE
     // =========================================================================
-    let products = JSON.parse(localStorage.getItem('xb_products_v2')) || DEFAULT_PRODUCTS;
-    let salesHistory = JSON.parse(localStorage.getItem('xb_sales_v2')) || DEFAULT_SALES;
+    let products = DB_ON
+        ? (JSON.parse(localStorage.getItem('xb_products_cache_v1')) || [])
+        : (JSON.parse(localStorage.getItem('xb_products_v2')) || DEFAULT_PRODUCTS);
+    let salesHistory = DB_ON ? [] : (JSON.parse(localStorage.getItem('xb_sales_v2')) || DEFAULT_SALES);
     let cart = JSON.parse(localStorage.getItem('xb_cart_v2')) || [];
     let currentUser = JSON.parse(localStorage.getItem('xb_user_v2')) || null;
     let currentLang = localStorage.getItem('xb_lang_v2') || 'uz';
@@ -1173,10 +1190,35 @@
         showToast(`Xush kelibsiz, ${firstName}!`, "🎉");
     }
 
-    function handleSellerLogin(e) {
+    async function handleSellerLogin(e) {
         e.preventDefault();
         const login = document.getElementById('seller-login-input').value.trim();
         const pass = document.getElementById('seller-pass-input').value.trim();
+
+        if (DB_ON) {
+            // Baza ulangan: login sifatida Supabase'dagi sotuvchi EMAILi yoziladi
+            try {
+                const { error } = await sb.auth.signInWithPassword({ email: login, password: pass });
+                if (error) {
+                    showToast("Login yoki parol noto'g'ri!", "❌");
+                    return;
+                }
+            } catch (err) {
+                showToast("Internet bilan muammo, qayta urinib ko'ring", "⚠️");
+                return;
+            }
+            currentUser = {
+                role: 'seller',
+                firstName: 'Sotuvchi',
+                lastName: 'Admin',
+                phone: '@' + sellerConfig.username
+            };
+            localStorage.setItem('xb_user_v2', JSON.stringify(currentUser));
+            enterApp();
+            showToast("Sotuvchi paneliga kirdingiz!", "🔐");
+            loadProductsFromDB();
+            return;
+        }
 
         if (login === sellerConfig.login && pass === sellerConfig.password) {
             currentUser = {
@@ -1194,6 +1236,10 @@
     }
 
     function logoutUser() {
+        if (DB_ON) {
+            try { sb.auth.signOut(); } catch (e) {}
+            products.forEach(p => { delete p.costPrice; }); // tannarx xaridorga ko'rinmasin
+        }
         currentUser = null;
         localStorage.removeItem('xb_user_v2');
         document.getElementById('main-app-wrapper').classList.add('hidden');
@@ -1719,66 +1765,125 @@
         submitOrder('card', screenshot);
     }
 
-    async function submitOrder(paymentMethod = 'cash', screenshot = null) {
-        if (cart.length === 0) return;
+    let isSubmittingOrder = false;
 
-        // Ism va telefon ro'yxatdan o'tishda kiritilgan profildan olinadi
-        const name = `${currentUser.firstName} ${currentUser.lastName || ''}`.trim();
-        const phone = currentUser.phone;
+    function reopenCardStep() {
+        document.getElementById('payment-modal').classList.remove('hidden');
+        choosePayCard();
+    }
 
-        const now = new Date();
-        const timeStr = now.toLocaleString('uz-UZ', {
-            year: 'numeric', month: '2-digit', day: '2-digit',
-            hour: '2-digit', minute: '2-digit'
-        });
-
-        let totalRevenue = 0;
-        let totalProfit = 0;
-        let totalQty = 0;
-        const shortItems = [];
-
-        const lines = cart.map((item, idx) => {
-            const p = products.find(prod => prod.id === item.id);
-            const subRev = p.price * item.qty;
-            const unitCost = p.costPrice || Math.round(p.price * 0.72);
-            const subProfit = (p.price - unitCost) * item.qty;
-
-            totalRevenue += subRev;
-            totalProfit += subProfit;
-            totalQty += item.qty;
-            shortItems.push(`${p.title} (${item.qty} dona)`);
-
-            return `${idx + 1}. ${p.title} (${item.qty} dona) — ${formatUZS(subRev)} [${p.delivery}]`;
-        }).join('\n');
-
-        const paymentLine = paymentMethod === 'card'
-            ? "💳 To'lov: Kartadan (to'langan, chek yuklangan)"
-            : "💵 To'lov: Naqd (buyurtma kelganda)";
-
-        // Record into Seller Sales & Profit Analytics
-        const saleRecord = {
-            id: Date.now(),
-            dateISO: now.toISOString(),
-            dateDisplay: timeStr,
-            customerName: name,
-            customerPhone: phone,
-            itemsSummary: shortItems.join(', '),
-            qty: totalQty,
-            revenue: totalRevenue,
-            profit: totalProfit,
-            paymentMethod: paymentMethod,
-            paymentScreenshot: screenshot
-        };
-        salesHistory.unshift(saleRecord);
-        try {
-            localStorage.setItem('xb_sales_v2', JSON.stringify(salesHistory));
-        } catch (e) {
-            // Xotira to'lib qolsa, buyurtma baribir saqlansin (chek rasmisiz)
-            saleRecord.paymentScreenshot = null;
-            try { localStorage.setItem('xb_sales_v2', JSON.stringify(salesHistory)); } catch (e2) {}
+    // Telegram xabarini server (Supabase Edge Function) yuboradi — token brauzerda turmaydi
+    async function notifyOrder(orderId) {
+        for (let i = 0; i < 3; i++) {
+            try {
+                const { error } = await sb.functions.invoke('notify-order', { body: { order_id: orderId } });
+                if (!error) return;
+            } catch (e) {}
+            await new Promise(r => setTimeout(r, 3000));
         }
+    }
 
-        lastFormattedOrderText = 
+    async function submitOrder(paymentMethod = 'cash', screenshot = null) {
+        if (cart.length === 0 || isSubmittingOrder) return;
+        if (DB_CONFIGURED && !DB_ON) {
+            // Baza ulanmagan: buyurtma telefon xotirasida yo'qolib ketmasin
+            showToast("Baza bilan ulanib bo'lmadi. Sahifani yangilang", "❌");
+            if (paymentMethod === 'card') reopenCardStep();
+            return;
+        }
+        isSubmittingOrder = true;
+
+        try {
+            // Ism va telefon ro'yxatdan o'tishda kiritilgan profildan olinadi
+            const name = `${currentUser.firstName} ${currentUser.lastName || ''}`.trim();
+            const phone = currentUser.phone;
+
+            const validCart = cart.filter(item => products.some(prod => prod.id === item.id));
+            if (validCart.length === 0) {
+                showToast("Savatdagi tovarlar topilmadi", "⚠️");
+                return;
+            }
+
+            const now = new Date();
+            const timeStr = now.toLocaleString('uz-UZ', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit'
+            });
+
+            let totalRevenue = 0;
+            let totalProfit = 0;
+            let totalQty = 0;
+            const shortItems = [];
+
+            const lines = validCart.map((item, idx) => {
+                const p = products.find(prod => prod.id === item.id);
+                const subRev = p.price * item.qty;
+                const unitCost = p.costPrice || Math.round(p.price * 0.72);
+                const subProfit = (p.price - unitCost) * item.qty;
+
+                totalRevenue += subRev;
+                totalProfit += subProfit;
+                totalQty += item.qty;
+                shortItems.push(`${p.title} (${item.qty} dona)`);
+
+                return `${idx + 1}. ${p.title} (${item.qty} dona) — ${formatUZS(subRev)} [${p.delivery}]`;
+            }).join('\n');
+
+            const paymentLine = paymentMethod === 'card'
+                ? "💳 To'lov: Kartadan (to'langan, chek yuklangan)"
+                : "💵 To'lov: Naqd (buyurtma kelganda)";
+
+            if (DB_ON) {
+                // ---- Umumiy bazaga yozish ----
+                showToast("Buyurtma yuborilmoqda...", "⏳");
+                const orderId = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+                let receiptPath = null;
+
+                if (paymentMethod === 'card' && screenshot) {
+                    receiptPath = `${orderId}.jpg`;
+                    const blob = await (await fetch(screenshot)).blob();
+                    const { error: upErr } = await sb.storage.from('receipts')
+                        .upload(receiptPath, blob, { contentType: 'image/jpeg', upsert: false });
+                    if (upErr) throw upErr;
+                }
+
+                // Narx va summalarni server o'zi qayta hisoblaydi (xaridor o'zgartira olmaydi)
+                const { error } = await sb.from('orders').insert({
+                    id: orderId,
+                    customer_name: name,
+                    customer_phone: phone,
+                    items: validCart.map(i => ({ id: i.id, qty: i.qty })),
+                    payment_method: paymentMethod,
+                    receipt_path: receiptPath
+                });
+                if (error) throw error;
+
+                notifyOrder(orderId); // buyurtma saqlandi — botga xabar fonda yuboriladi
+            } else {
+                // ---- Eski usul: faqat shu qurilma xotirasi ----
+                const saleRecord = {
+                    id: Date.now(),
+                    dateISO: now.toISOString(),
+                    dateDisplay: timeStr,
+                    customerName: name,
+                    customerPhone: phone,
+                    itemsSummary: shortItems.join(', '),
+                    qty: totalQty,
+                    revenue: totalRevenue,
+                    profit: totalProfit,
+                    paymentMethod: paymentMethod,
+                    paymentScreenshot: screenshot
+                };
+                salesHistory.unshift(saleRecord);
+                try {
+                    localStorage.setItem('xb_sales_v2', JSON.stringify(salesHistory));
+                } catch (e) {
+                    saleRecord.paymentScreenshot = null;
+                    try { localStorage.setItem('xb_sales_v2', JSON.stringify(salesHistory)); } catch (e2) {}
+                }
+            }
+
+            lastFormattedOrderText = 
 `🛍 YANGI BUYURTMA (Xitoy Bozor)
 ━━━━━━━━━━━━━━━
 👤 Mijoz: ${name}
@@ -1791,46 +1896,67 @@ ${lines}
 
 💰 JAMI SUMMA: ${formatUZS(totalRevenue)}`;
 
-        document.getElementById('telegram-message-preview').textContent = lastFormattedOrderText;
-        document.getElementById('order-success-modal').classList.remove('hidden');
+            document.getElementById('telegram-message-preview').textContent = lastFormattedOrderText;
+            document.getElementById('order-success-modal').classList.remove('hidden');
 
-        // Send to Telegram Bot if configured
-        if (sellerConfig.botToken && sellerConfig.chatId) {
-            try {
-                await fetch(`https://api.telegram.org/bot${sellerConfig.botToken}/sendMessage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        chat_id: sellerConfig.chatId,
-                        text: lastFormattedOrderText
-                    })
-                });
-
-                // Karta orqali to'langan bo'lsa — chek skrinshotini ham yuboramiz
-                if (paymentMethod === 'card' && screenshot) {
-                    const blob = await (await fetch(screenshot)).blob();
-                    const form = new FormData();
-                    form.append('chat_id', sellerConfig.chatId);
-                    form.append('caption', `🧾 To'lov cheki — ${name}, ${phone}\n💰 ${formatUZS(totalRevenue)}`);
-                    form.append('photo', blob, 'chek.jpg');
-                    await fetch(`https://api.telegram.org/bot${sellerConfig.botToken}/sendPhoto`, {
-                        method: 'POST',
-                        body: form
-                    });
-                }
-            } catch (e) {}
+            cart = [];
+            saveCart();
+            renderCart();
+            lucide.createIcons();
+        } catch (err) {
+            // Buyurtma ketmadi: savat saqlanadi, mijoz qayta urinib ko'radi
+            console.error('Buyurtma yuborilmadi', err);
+            showToast("Buyurtma yuborilmadi. Internetni tekshirib, qayta urinib ko'ring", "❌");
+            if (paymentMethod === 'card') reopenCardStep();
+        } finally {
+            isSubmittingOrder = false;
         }
-
-        cart = [];
-        saveCart();
-        renderCart();
-        lucide.createIcons();
     }
 
-    function viewReceipt(saleId) {
+    async function refreshSales() {
+        if (!DB_ON || !currentUser || currentUser.role !== 'seller') return;
+        try {
+            const { data, error } = await sb.from('orders').select('*')
+                .order('created_at', { ascending: false }).limit(500);
+            if (error) throw error;
+            salesHistory = data.map(r => ({
+                id: Number(r.id),
+                dateISO: r.created_at,
+                dateDisplay: new Date(r.created_at).toLocaleString('uz-UZ', {
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit'
+                }),
+                customerName: r.customer_name,
+                customerPhone: r.customer_phone,
+                itemsSummary: r.items_summary,
+                qty: Number(r.qty),
+                revenue: Number(r.revenue),
+                profit: Number(r.profit),
+                paymentMethod: r.payment_method,
+                receiptPath: r.receipt_path
+            }));
+            renderSalesAnalytics();
+        } catch (e) {
+            console.error('Buyurtmalarni yuklashda xato', e);
+        }
+    }
+
+    async function viewReceipt(saleId) {
         const sale = salesHistory.find(x => x.id === saleId);
-        if (!sale || !sale.paymentScreenshot) return;
-        document.getElementById('receipt-img').src = sale.paymentScreenshot;
+        if (!sale) return;
+        let src = sale.paymentScreenshot || null;
+        if (!src && DB_ON && sale.receiptPath) {
+            try {
+                const { data, error } = await sb.storage.from('receipts').createSignedUrl(sale.receiptPath, 300);
+                if (error || !data) throw error || new Error('no url');
+                src = data.signedUrl;
+            } catch (e) {
+                showToast("Chekni ochib bo'lmadi", "⚠️");
+                return;
+            }
+        }
+        if (!src) return;
+        document.getElementById('receipt-img').src = src;
         document.getElementById('receipt-modal').classList.remove('hidden');
     }
 
@@ -1876,9 +2002,96 @@ ${lines}
         });
     }
 
-    function handleAddProduct(e) {
+    // ---------------------------------------------------------------------
+    // MAHSULOTLAR: umumiy bazadan yuklash
+    // ---------------------------------------------------------------------
+    let lastProductsLoad = 0;
+
+    function mapProductRow(r) {
+        return {
+            id: Number(r.id),
+            title: r.title,
+            category: r.category,
+            price: Number(r.price),
+            oldPrice: r.old_price ? Number(r.old_price) : 0,
+            delivery: r.delivery || '',
+            images: Array.isArray(r.images) ? r.images : [],
+            videoUrl: r.video_url || '',
+            description: r.description || ''
+        };
+    }
+
+    function refreshVisibleViews() {
+        if (!currentUser) return;
+        const visible = id => !document.getElementById(id).classList.contains('hidden');
+        if (visible('view-catalog')) renderProducts();
+        if (visible('view-cart')) renderCart();
+        if (visible('view-admin')) renderAdminProductList();
+        updateCartBadge();
+        lucide.createIcons();
+    }
+
+    async function loadProductsFromDB() {
+        if (!DB_ON) return;
+        lastProductsLoad = Date.now();
+        try {
+            const { data, error } = await sb.from('products').select('*')
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            const list = data.map(mapProductRow);
+
+            // Tannarx faqat kirgan sotuvchiga ko'rinadi
+            if (currentUser && currentUser.role === 'seller') {
+                const { data: costs } = await sb.from('product_costs').select('*');
+                if (costs) {
+                    const byId = {};
+                    costs.forEach(c => { byId[Number(c.product_id)] = Number(c.cost_price); });
+                    list.forEach(p => { if (byId[p.id] !== undefined) p.costPrice = byId[p.id]; });
+                }
+            }
+
+            products = list;
+            try {
+                localStorage.setItem('xb_products_cache_v1', JSON.stringify(list.map(p => {
+                    const { costPrice, ...rest } = p;
+                    return rest;
+                })));
+            } catch (e) {}
+
+            // O'chirilgan tovarlar savatdan olib tashlanadi
+            const before = cart.length;
+            cart = cart.filter(i => products.some(p => p.id === i.id));
+            if (cart.length !== before) saveCart();
+
+            refreshVisibleViews();
+        } catch (e) {
+            console.error('Mahsulotlarni yuklashda xato', e);
+        }
+    }
+
+    // Rasmni (data URL) kichraytirib, JPEG qilib qaytaradi
+    function compressDataUrl(dataUrl, maxSide = 1000, quality = 0.8) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onerror = reject;
+            img.onload = () => {
+                const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+                const w = Math.round(img.width * scale);
+                const h = Math.round(img.height * scale);
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.src = dataUrl;
+        });
+    }
+
+    async function handleAddProduct(e) {
         e.preventDefault();
         if (!currentUser || currentUser.role !== 'seller') return;
+        const form = e.target;
 
         const title = document.getElementById('new-title').value.trim();
         const costPrice = parseInt(document.getElementById('new-cost').value, 10);
@@ -1888,6 +2101,7 @@ ${lines}
         const urlInput = document.getElementById('new-image-url').value.trim();
         const videoUrl = document.getElementById('new-video-url').value.trim();
         const desc = document.getElementById('new-desc').value.trim();
+        const description = desc || "Xitoydan yangi kelgan sifatli mahsulot.";
 
         let finalImages = [...uploadedImagesBase64];
         if (urlInput) finalImages.push(urlInput);
@@ -1895,21 +2109,67 @@ ${lines}
             finalImages.push("https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=700&q=80");
         }
 
-        products.unshift({
-            id: Date.now(),
-            title,
-            category,
-            costPrice,
-            price,
-            oldPrice: Math.round(price * 1.25),
-            delivery,
-            images: finalImages,
-            videoUrl,
-            description: desc || "Xitoydan yangi kelgan sifatli mahsulot."
-        });
+        const id = Date.now();
 
-        localStorage.setItem('xb_products_v2', JSON.stringify(products));
-        e.target.reset();
+        if (DB_ON) {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+            try {
+                showToast("Mahsulot saqlanmoqda...", "⏳");
+                const imageUrls = [];
+                for (let i = 0; i < finalImages.length; i++) {
+                    const img = finalImages[i];
+                    if (img.startsWith('data:')) {
+                        const small = await compressDataUrl(img);
+                        const blob = await (await fetch(small)).blob();
+                        const path = `${id}_${i}.jpg`;
+                        const { error: upErr } = await sb.storage.from('products')
+                            .upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+                        if (upErr) throw upErr;
+                        imageUrls.push(sb.storage.from('products').getPublicUrl(path).data.publicUrl);
+                    } else {
+                        imageUrls.push(img);
+                    }
+                }
+
+                const { error } = await sb.from('products').insert({
+                    id, title, category, price,
+                    old_price: Math.round(price * 1.25),
+                    delivery,
+                    images: imageUrls,
+                    video_url: videoUrl,
+                    description
+                });
+                if (error) throw error;
+
+                const { error: costErr } = await sb.from('product_costs')
+                    .insert({ product_id: id, cost_price: costPrice });
+                if (costErr) throw costErr;
+            } catch (err) {
+                console.error('Mahsulot saqlanmadi', err);
+                showToast("Mahsulot saqlanmadi. Qayta kirib ko'ring.", "❌");
+                return;
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
+            await loadProductsFromDB();
+        } else {
+            products.unshift({
+                id,
+                title,
+                category,
+                costPrice,
+                price,
+                oldPrice: Math.round(price * 1.25),
+                delivery,
+                images: finalImages,
+                videoUrl,
+                description
+            });
+            localStorage.setItem('xb_products_v2', JSON.stringify(products));
+        }
+
+        form.reset();
         uploadedImagesBase64 = [];
         document.getElementById('upload-preview-strip').innerHTML = "";
 
@@ -1918,11 +2178,24 @@ ${lines}
         switchTab('catalog');
     }
 
-    function deleteProduct(id) {
-        products = products.filter(p => p.id !== id);
-        localStorage.setItem('xb_products_v2', JSON.stringify(products));
-        renderAdminProductList();
-        renderProducts();
+    async function deleteProduct(id) {
+        if (DB_ON) {
+            try {
+                const { data, error } = await sb.from('products').delete().eq('id', id).select();
+                if (error) throw error;
+                if (!data || data.length === 0) throw new Error('ruxsat yo\'q yoki topilmadi');
+            } catch (err) {
+                console.error('Mahsulot o\'chmadi', err);
+                showToast("Mahsulot o'chmadi. Qayta kirib ko'ring.", "❌");
+                return;
+            }
+            await loadProductsFromDB();
+        } else {
+            products = products.filter(p => p.id !== id);
+            localStorage.setItem('xb_products_v2', JSON.stringify(products));
+            renderAdminProductList();
+            renderProducts();
+        }
         showToast("Mahsulot o'chirildi", "🗑️");
     }
 
@@ -2000,7 +2273,7 @@ ${lines}
                     <span class="px-2 py-0.5 rounded-full bg-sky-50 dark:bg-sky-500/15 text-sky-600 dark:text-sky-300 font-bold">
                         ${s.paymentMethod === 'card' ? "💳 Kartadan to'langan" : "💵 Naqd (kelganda)"}
                     </span>
-                    ${s.paymentScreenshot ? `<button onclick="viewReceipt(${s.id})" class="text-rose-600 font-bold">🧾 Chekni ko'rish</button>` : ''}
+                    ${(s.paymentScreenshot || s.receiptPath) ? `<button onclick="viewReceipt(${s.id})" class="text-rose-600 font-bold">🧾 Chekni ko'rish</button>` : ''}
                 </div>` : ''}
             </div>
         `).join('');
@@ -2063,17 +2336,29 @@ ${lines}
         if (tab === 'catalog') {
             renderCategories();
             renderProducts();
+            if (DB_ON && Date.now() - lastProductsLoad > 30000) loadProductsFromDB();
         }
         if (tab === 'cart') renderCart();
         if (tab === 'admin') renderAdminProductList();
-        if (tab === 'analytics') renderSalesAnalytics();
+        if (tab === 'analytics') { renderSalesAnalytics(); refreshSales(); }
         lucide.createIcons();
     }
 
-    window.onload = function () {
+    window.onload = async function () {
         setTheme(currentTheme);
         setLanguage(currentLang);
         updateCartBadge();
+
+        // Sotuvchi sessiyasi tugagan bo'lsa, sotuvchi oynasini ochib qo'ymaymiz
+        if (DB_ON && currentUser && currentUser.role === 'seller') {
+            try {
+                const { data } = await sb.auth.getSession();
+                if (!data || !data.session) {
+                    currentUser = null;
+                    localStorage.removeItem('xb_user_v2');
+                }
+            } catch (e) {}
+        }
 
         if (currentUser) {
             enterApp();
@@ -2081,6 +2366,8 @@ ${lines}
             document.getElementById('auth-screen').classList.remove('hidden');
             lucide.createIcons();
         }
+
+        loadProductsFromDB();
     };
 </script>
 </body>
